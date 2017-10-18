@@ -381,3 +381,38 @@ la trama EAPOL completa es protegida usando un protocolo de confidencialidad de 
 Finalmente, si un cliente transmite una trama de difusión o multi-difusión, la envía primero como
 una trama uni-difusión al AP. El AP entonces encripta la trama usando la clave de grupo, y la transmite
 a todos los clientes. Esto asegura que todos los clientes dentro del rango del AP reciban la trama.
+
+# 3 ATACANDO EL 4-WAY HANDSHAKE
+En esta sección mostramos que el mecánismo de declaración detrás del 4-way handshake es vulnerable a un ataque de reinstalación de claves.
+Entonces demostramos cómo ejecutar este ataque en entornos de la vida real.
+
+## 3.1 Mecánismo de Declaración del Solicitante
+La enmienda 802.11i no contiene un mecánismo de declaración formal describiendo cómo el solicitante
+debe implementar el 4-way handshake. En cambio, sólamente proporciona pseudo-código que describe cómo,
+pero no cuando, ciertos mensajes del handshake deben ser procesados.
+Afortunadamente, 802.11r extiende el 4-way handshake ligeramente, y lo hace proporcionando
+una detallado mecánismode declaración del solicitante.
+La Figura 2 contiene una versión simplificada de este mecánismo de declaración.
+
+Cuando se conecta por primera vez a una red e inicia el 4-way handshake, el solicitante transita al
+mecánismo PTK-INIT (ver Figura 3).
+Aquí, inicializa la PMK (Pairwise Master Key). Cuando  recibe el mensaje 1 transita a la fase PTK-START.
+Esto podría suceder cuando se conecta a una red por primera vez, o cuando la clave de sesión ha sido renovada
+después de una previo handshake (completado). Al ingresar a PTK-START, el solicitante genera un SNonce
+aleatorio, calcula la PTK Temporal (TPTK), y envía su SNonce al autenticador usando el mensaje 2. El autenticador
+responderá con el mensaje 3, el cual es aceptado por el solicitante si el MIC y el contador de repetición son validos.
+De ser así, se mueve al mecánismo PTK-NEGOTIATING, donde marca el TPTK como valido asignandoselo a la variable PTK,
+y envía el mensaje 4 al autenticador.
+Entonces transita de inmediato al mecánismo PTK-DONE donde la PTK y GTK están instaladas para ser usadas
+por el protocolo de confidencialidad de datos usando la petición primitiva MLME-SETKEYS.
+Finalmente, abre el puerto 802.1x de modo que el solicitante pueda recibir y enviar tramas de datos normales.
+Tenga en cuenta que el mecánismo de declaración toma en cuenta de manera explicita retransmisiones de ya sea
+el mensaje 1 o 3, lo cual ocurre si el autenticador no recibe el mensaje 2 o 4, respectivamente.
+Estas retransmisiones usan un contador de repetición EAPOL incrementado.
+Confirmamos que el mecánismo de declaración en 802.11r concuerda con el original, que fue "definido"
+en 802.11i usando descipciones textuales esparcidas a lo largo de la enmienda. Más importante, verificamos
+dos propiedades de las cuales abusamos en nuestro ataque de reinstalación de claves. Primero, 802.11i declara que
+el AP retransmita el mensaje 1 o 3 si no recibio una respuesta. Por lo tanto, el cliente de manejar las retransmisiones
+del mensaje 1 o 3, coincidiendo el mecánismo de declaración de 802.11r. Adicionalmente, 802.11i declara que el cliente
+debe instalar la PTK despues de procesar y responder el mensaje 3. Esto una vez más coincide con el mecánismo de declaración
+dado en 802.11r.
