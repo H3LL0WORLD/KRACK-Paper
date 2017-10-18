@@ -1,4 +1,3 @@
-Repetir | Retransmitir
 # Ataques de reinstalación de claves: Forzar la reutilización de Nonce en WPA2
 
 - Mathy Vanhoef
@@ -156,7 +155,7 @@ Incluso las redes empresariales dependen del 4-way handshake.
 Por lo tanto, todas las redes Wi-Fi protegidas son afectadas por nuestros ataques.
 El 4-way handshake, GroupKey handshake, y el protocolo CCMP, han sido formalmente analizados y demostrado ser seguros.
 
-# 2.2 Autenticación y Asociación
+## 2.2 Autenticación y Asociación
 Cuando un cliente quiere conectarse a una red Wi-Fi, comienza con (mutua) autenticación y asociación con el AP.
 En la figura 2 se ilustra esto en la fase de asociacion del handshake.
 Sin embargo, cuando se conecta por primera vez a una red, ninguna autenticación real toma lugar en esta fase.
@@ -185,3 +184,29 @@ son usadas para proteger los mensajes del handshake, mientras que la TK es usada
 proteger tramas de datos normales con un protocolo de confidencialidad de datis.
 Si se usa WPA2, el 4-way handshake también transporta la actual
 (Clave Temporal Grupal | Group Temporal Key) (GTK) para el suplicante.
+```
++------------+------------------------+-------+.....+-----+.....+---------+-----------+----------+
+| encabezado | contador de repeticion | nonce |     | RSC |     |   MIC   |    Datos de Clave    |
++------------+------------------------+-------+.....+-----+.....+---------+-----------+----------+
+<---------------------------------------------------><--------><---------------->
+                   82 bytes                           variable  encrypted
+```
+##### Figura 1: Diseño simplificado de una trama EAPOL.
+
+Cada mensaje en el 4-way handshake se define utilizando tramas EAPOL.
+Discutiremos brevemente el diseño y los campos más importantes
+de estas tramas (ver Figura 1).
+Primero, el encabezado define qué mensaje representa una trama EAPOL en particular en el handshake.
+Usaremos el mensaje de notación n y un MsgN para referirnos al mensaje n-th de un 4-way handshake
+
+El campo del contador de repetición se usa para detectar tramas repetidas.
+El autenticador incrementa siempre el contador de repetición despues de trasmitir una trama.
+Cuando el suplicante responde a una trama EAPOL del autenticador,
+este usa el mismo contador de repetición como al del que la trama EAPOL le  está respondiendo.
+El campo nonce transporta los nones aleatorios que el suplicante
+y el autenticador generan para derivar una nueva clave de sesión.
+Despues, en caso de que la trama EAPOL transmita una (Clave Grupal | Group Key),
+el (Contador de Secuencia de Recepción | Receive Sequence Counter) (RSC) contiene 
+el número del paquete inicial de esta clave.
+La clave grupal se almacenan en el campo Datos de Clave, que está encriptado usando la KEK.
+Finalmente, la autenticidad de la trama es protegida usando la KCK con una (Verificación de Integridad de Mensajes | Message Integriti Check) (MIC).
