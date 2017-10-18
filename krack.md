@@ -417,6 +417,35 @@ del mensaje 1 o 3, coincidiendo el mecánismo de declaración de 802.11r. Adicio
 debe instalar la PTK despues de procesar y responder el mensaje 3. Esto una vez más coincide con el mecánismo de declaración
 dado en 802.11r.
 
+### Tabla 1: Comportamiento de clientes
+Columnas:
+1. Clientes
+2. Muestra si la retransmisión del mensaje 3 es aceptada.
+3. Si la retransmision de un mensaje EAPOL en texto plano es aceptada si una PTK es instalada.
+4. Si los mensajes EAPOL en texto plano son aceptados si se envian inmediatamente después del 1er mensaje 3.
+5. Si es afectado por el ataque de la Sección 3.4.
+6. y 7. Indican si el cliente es vulnerable a un ataque de reinstalación de clave contra el 4-way o group key handshake.
+
+Implementación | Re. Msg3 | Pt. EAPOL | Quick Pt. | Quick Ct. | 4-way | Group
+-------------- | -------- | --------- | --------- | --------- | ----- | -----
+OS X 10.9.5 | :heavy_check_mark: | :heavy_multiplication_x: | :heavy_multiplication_x: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark:
+macOS Sierra 10.12 | :heavy_check_mark: | :heavy_multiplication_x: | :heavy_multiplication_x: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark:
+iOS 10.3.1 c | :heavy_multiplication_x: | N/A | N/A | N/A | :heavy_multiplication_x: | :heavy_check_mark:
+wpa_supplicant v2.3 | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark:
+wpa_supplicant v2.4-5 | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark:a | :heavy_check_mark:a | :heavy_check_mark:
+wpa_supplicant v2.6 | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark:b | :heavy_check_mark:b | :heavy_check_mark:
+Android 6.0.1 | :heavy_check_mark: | :heavy_multiplication_x: | :heavy_check_mark: | :heavy_check_mark:a | :heavy_check_mark:a | :heavy_check_mark:
+OpenBSD 6.1 (rum) | :heavy_check_mark: | :heavy_multiplication_x: | :heavy_multiplication_x: | :heavy_multiplication_x: | :heavy_multiplication_x: | :heavy_check_mark:
+OpenBSD 6.1 (iwn) | :heavy_check_mark: | :heavy_multiplication_x: | :heavy_multiplication_x: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark:
+Windows 7 c | :heavy_multiplication_x: | N/A | N/A | N/A | :heavy_multiplication_x: | :heavy_check_mark:
+Windows 10 c | :heavy_multiplication_x: | N/A | N/A | N/A | :heavy_multiplication_x: | :heavy_check_mark:
+MediaTek | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark:
+
+- A: Debido a un bug, una TK de sólo ceros será instalada. ver Sección 6.3.
+- B: Sólamente la clave de grupo es reinstalada en el 4-way handshake.
+- C: Ciertas pruebas son irrelevantes (no aplicables) porque la implementación no acepta retransmisiones del mensaje 3.
+
+
 ## 3.2 El ataque de reinstalación de clave
 Nuestro ataque de reinstalación de clave es fácil de detectar ahora: ya que el solicitante aún acepta retransmisiones del mensaje 3,
 incluso cuando está en el mecánismo PTK-DONE, podemos forzar una reinstalación de la PTK.
@@ -457,3 +486,42 @@ de claves contra el 4-way handshake. Recalcamos que el comportamiento de un disp
 como del NIC inalambrico (Controlador de Interfaz de Red o Adaptador o Tarjeta de Red, etc..) usado.
 Por ejemplo, aunque linux acepta retransmisiones en texto plano del mensaje 3, los NICs Wi-Fi usados por varios dispositivos Android las rechazan.
 Sin embargo, los teléfonos Android con un NIC diferente podrían de hecho aceptar retransmisiones en texto plano del mensaje 3.
+
+## 3.3 Retransmision en texto plano del mensaje 3
+Si la victima acepta retransmisiones en texto plano del mensaje 3 aún después de instalar la clave de sesión, nuestro ataque de reinstalación
+es sencillo. Primero, el atacante usa un un ataque MitM basado en el canal para poder manipular los mensaje del handshake.
+Entonces evita que el mensaje 4 llegue al autenticador. Esto es ilustrado en la etapa 1 de la Figura 4, inmediatamente después de enviar el
+mensaje 4, la victima instalará la PTK y GTK. En este punto la victima tambien abre el puerto 802.1x y comienza a transmir tramas de datos
+normales (recordar Sección 2.3). 
+Observe que la primer trama usa un valor nonce de 1 en el protocolo de confidencialidad de datos. Entonces en la tercera etapa del ataque,
+el autenticador retransmite el mensaje 3 porque no recibió el mensaje 4. El atacante retransmite el mensaje 3 a la victima, ocasionando que reinstale
+la PTK y GTK. Como resultado, restaura el nonce y el contador de repetición usado por el protocolo de confidencialidad de datos. Tenga en cuenta
+que el atacante no puede repetir un mensaje 3 viejo, porque su contador de repetición EAPOL ya no está actualizado.
+Ignoramos la etapa 4 del ataque por ahora. Finalmente, cuando la victima transmita su siguiente trama de datos, el protocolo de confidencialidad
+de datos reutiliza los nonces. Tenga en cuenta que un atacante puede esperar una cantidad de tiempo arbitraria antes de retransmitir el mensaje 3
+a la victima. Por lo tanto, podemos controlar la cantidad de nonces que serán reusados. Ademas un atacante puede volver a realizar el ataque
+desautenticando al cliente, después de lo cual se reconectará a la red y ejecutará un nuevo 4-way handshake.
+
+La Figura 4 también muestra que nuestro ataque de reinstalación de clave ocurre espontáneamente si el mensaje 4 se pierde debido al ruido de fondo.
+En otras palabras, los clientes que aceptan retransmisiones en texto plano del mensaje 3, podrían estar actualmente reutilizando nonces sin que
+siquiera un atacante estuviera presente. Inspirado por esta observación, un atacante también podría selectivamente interferir el mensaje 4,
+resultando en un ataque sigiloso que es indistinguible de la interferencia de fondo aleatoria.
+
+Ahora volvemos a la etapa 4 del ataque. La meta de está etapa es completar el handshake en el lado del autenticador. Lo cual no es trivial ya que
+la victima ya instalo la PTK, lo que significa que el mensaje está cifrado. Y como el autenticado aún no ha instalado la PTK, esto normalmente
+rechazaría este mensaje 4 cifrado. Sin embargo, una cuidadosa inspección del estandar 802.11 revela que el autenticador podría aceptar
+***cualquier*** contador de repetición usado en el 4-way handshake, no sólamente el último:
+> "Al recibir el mensaje 4, el Autenticador verifica que el valor del campo Contador de Repetición de Clave sea una usado en este 4-way handshake"
+
+En la práctica, encontramos que vaios APs en efecto aceptan un contador de repetición antiguo. Más precisamente, algunos APs aceptan contadores
+de repetición usados en un mensaje al cliente, pero no han sido usados aún en una respuesta del cliente (ver columna 2 en Tabla 2 en la página 8).
+Estos APs aceptarán el antiguo mensaje 4 sin cifrar, que tiene el contador de repetición `r + 1` en la Figura 4.
+Como resultado, estos APs instalarán la PTK, y comenzarán a enviar tramas uni-difusión cifradas al cliente.
+
+A pesar que la Figura 4 sólamente ilustra la reutilización del nonce en tramas envíadas por el cliente, nuestro ataque tambien nos permite
+repetir tramas. Primero, después de que el cliente reinstala la GTK en la etapa 3 del ataque, tramas de difusión y multi-difusión que envíe el AP
+después de retransmitir el mensaje 3 puedens ser repetidas. Esto se debe a que los contadores de repetición son restaurados también cuando se
+reinstala una clave. Segundo, si podemos hacer que el AP instale la PTK, también podemo repteir tramas uni-difusión enviadas por el AP al cliente.
+
+Confirmamos que el ataque mostrado en la Figura 4 funciona contra la implementación MediaTek del cliente Wi-Fi, y contra ciertas versiones de 
+wpa_supplicant (ver Sección 6.3). Cómo atacamos otras implementaciones se explica en la siguiente sección.
