@@ -1,4 +1,4 @@
-# Ataques de reinstalación de claves: Forzar la reutilización de Nonce en WPA2
+# Ataques de reinstalación de claves: Forzar la reutilización del Nonce en WPA2
 
 - Mathy Vanhoef
 - imec-DistriNet, KU Leuven
@@ -172,24 +172,24 @@ El AP responde con una respuesta de asociación, informando al cliente si la aso
 El 4-way handshake proporciona autenticación mutua basada en un
 secreto compartido llamado (Clave Maestra Pareja | Pairwise Master Key) (PMK), y negocia
 una nueva clave de sesión llamada (Clave Transitoria Pareja | Pairwise Transient Key) (PTK). Durante
-este handshake, el cliente es llamado el suplicante, y el AP es
-llamado el authnticador (usamos estos términos como sinónimos). El
+este handshake, el cliente es llamado el solicitante, y el AP es
+llamado el autenticador (usamos estos términos como sinónimos). El
 PMK es derivado de una contraseña pre-compartida en una red personal,
 y es negociada usando una fase de autenticacion 802.1x en una red empresarial (ver Figura 2).
-El PTK es derivado del PMK, el (Nonce del Autenticador | Authenticator Nonce) (ANonce), (Nonce del Suplicante | Supplicant Nonce) (SNonce), y
-la dirección MAC de tanto el suplicante como el autenticador. Una vez
+El PTK es derivado del PMK, el (Nonce del Autenticador | Authenticator Nonce) (ANonce), (Nonce del solicitante | Supplicant Nonce) (SNonce), y
+la dirección MAC de tanto el solicitante como el autenticador. Una vez
 generada, la PTK es dividida en una  (Clave de Confirmación Clave | Key Confirmation Key) (KCK),
 (Clave de Encriptación Clave | Key Encryption Key) (KEK), Y (Clave Temporal | Temporal Key) (TK). La KCK y KEK
 son usadas para proteger los mensajes del handshake, mientras que la TK es usada para
 proteger tramas de datos normales con un protocolo de confidencialidad de datis.
 Si se usa WPA2, el 4-way handshake también transporta la actual
-(Clave Temporal Grupal | Group Temporal Key) (GTK) para el suplicante.
+(Clave Temporal Grupal | Group Temporal Key) (GTK) para el solicitante.
 ```
 +------------+------------------------+-------+.....+-----+.....+---------+-----------+----------+
 | encabezado | contador de repeticion | nonce |     | RSC |     |   MIC   |    Datos de Clave    |
 +------------+------------------------+-------+.....+-----+.....+---------+-----------+----------+
-<---------------------------------------------------><--------><---------------->
-                   82 bytes                           variable  encrypted
+<---------------------------------------------------------------><--------><---------------------->
+                   82 bytes                                       variable        cifrado
 ```
 ##### Figura 1: Diseño simplificado de una trama EAPOL.
 
@@ -197,16 +197,169 @@ Cada mensaje en el 4-way handshake se define utilizando tramas EAPOL.
 Discutiremos brevemente el diseño y los campos más importantes
 de estas tramas (ver Figura 1).
 Primero, el encabezado define qué mensaje representa una trama EAPOL en particular en el handshake.
-Usaremos el mensaje de notación n y un MsgN para referirnos al mensaje n-th de un 4-way handshake
-
+Usaremos la notación ***mensaje n*** y  ***MsgN*** para referirnos al mensaje n-th de un 4-way handshake
 El campo del contador de repetición se usa para detectar tramas repetidas.
 El autenticador incrementa siempre el contador de repetición despues de trasmitir una trama.
-Cuando el suplicante responde a una trama EAPOL del autenticador,
-este usa el mismo contador de repetición como al del que la trama EAPOL le  está respondiendo.
-El campo nonce transporta los nones aleatorios que el suplicante
-y el autenticador generan para derivar una nueva clave de sesión.
+Cuando el solicitante responde a una trama EAPOL del autenticador,
+usa el mismo contador de repetición de la trama EAPOL a la qué está respondiendo.
+El campo nonce transporta los nonces aleatorios que el solicitante
+y el autenticador generan para derivar una clave de sesión nueva.
 Despues, en caso de que la trama EAPOL transmita una (Clave Grupal | Group Key),
 el (Contador de Secuencia de Recepción | Receive Sequence Counter) (RSC) contiene 
 el número del paquete inicial de esta clave.
-La clave grupal se almacenan en el campo Datos de Clave, que está encriptado usando la KEK.
-Finalmente, la autenticidad de la trama es protegida usando la KCK con una (Verificación de Integridad de Mensajes | Message Integriti Check) (MIC).
+La clave grupal se almacena en el campo Datos de Clave, que está cifrado usando
+la KEK. Finalmente, la autenticidad de la trama es protegida usando la KCK con
+una (Verificación de Integridad de Mensaje | Message Integriti Check) (MIC).
+
+La figura 2 ilustra los mensajes que son intercambiados durante el 4-way
+handshake. En est, usamos la siguiente notación:
+```
+MsgN(r, Nonce; GTK)
+```
+Esto representa el mensaje N de el 4-way handshake, teniendo un contador de
+repetición de ****r****, y con el dado nonce (si está presente). Todos los
+parametros despues del punto y coma se almacenan en el campo datos de clave,
+y  por lo tanto son cifrados usando la KEK (recuerde la Figura 1).
+
+El autenticador inicia el 4-way handshake enviando el mensaje 1. Este contiene
+el ANonce, y es el unico mensaje EAPOL que no está protegido por un MIC.
+Al recibir este mensaje, el solicitante genera el SNonce y derica la PTK
+(es decir, la clave de sesión). El solicitante entonces envía el SNonce al
+autenticador en el mensaje 2. Una vez que el autenticador se aprende el
+SNonce, tambien deriva la PTK, y envía la clave de grupo (GTK) al solicitante.
+Finalmente, para finalizar el handshake, el solicitante responde con el
+mensaje 4 y después de eso instala la PTK y GTK. Después de recibir este
+mensaje, el autenticador tambien instala la PTK y GTK (la GTK es instalada
+cuando se inicia el AP). Resumiendo, los primeros dos mensajes son usados
+para transportar nonces, y los dos ultimos son usados para transportar la
+clave de grupo y protegerla de ataques de degradación (downgrade).
+
+Tenga en cuenta que en una conexion existente, la PTK puede ser renovada
+iniciando un nuevo 4-way handshake. Durante esta renovación, todos los mensajes
+del 4-way handshake son encriptados por el protocolo de confidencialidad
+de datos usando la PTK actual (Dependemos de esto en la Sección 3.4)
+
+```
++-----------------------+                    +-----------------------+
+| Solicitante (cliente) |                    |   Autenticador (AP)   |
++-----------------------+                    +-----------------------+
+```
+###### Fase de Asociación
+```
+  |                    Petición de Autenticación                   |
+  |--------------------------------------------------------------->|
+  |                    Respuesta de Autenticación                  |
+  |<---------------------------------------------------------------|
+  |                    Petición de (Re)Asociación                  |
+  |--------------------------------------------------------------->|
+  |                    Respuesta de (Re)Asociación                 |
+  |<---------------------------------------------------------------|
+  |                                                                |
+  |<---------------- Autenticación 802.1x opcional --------------->|
+  |                                                                |
+```
+###### 4-way Handshake
+```
+  |                          Msg1(r, Anonce)                       |
+  |<---------------------------------------------------------------|
+ +-------------------+                                             |
+ | Derivación de PTK |                                             |
+ +-------------------+                                             |
+  |                          Msg2(r, SNonce)                       |
+  |--------------------------------------------------------------->|
+  |                                             +-------------------+
+  |                                             | Derivación de PTK |
+  |                                             +-------------------+
+  |                           Msg3(r+1; GTK)                       |
+  |<---------------------------------------------------------------|
+  |                             Msg4(r+1)                          |
+  |--------------------------------------------------------------->|
+ +--------------------+                              +--------------+ 
+ | Instalar PTK y GTK |                              | Instalar PTK |
+ +--------------------+                              +--------------+
+  |                                                                |
+  |<--- Ahora se pueden intercambiar tramas de datos cifradas  --->|
+  |                                                   +-------------+
+  |                                                   | Renovar GTK |
+  |                                                   +-------------+
+```
+###### Group Key Handshake
+```
+  |                   EncXptk {Grupo1(r+2; GTK)}                   |
+  |<---------------------------------------------------------------|
+  |                      EncYptk {Grupo2(r+2)}                     |
+  |--------------------------------------------------------------->|
+  |                                                                |
+ +--------------+                                    +--------------+
+ | Instalar GTK |                                    | Instalar GTK |
+ +--------------+                                    +--------------+
+```
+
+##### Figura 2: Mensajes intercambiados cuando un solicitante (cliente) se conecta con un autenticador (AP), realiza el 4-way handshake, y ejecuta periódicamente el group key handshake
+
+## 2.4 Protocolos de Integridad y Confidencialidad
+La enmienda 802.11i define dos protocolos de confidencialidad de datos.
+El primero se denomina Protocolo de Integridad de Clave (Temporal Key Integrity Protocol | TKIP). Sin embargo,
+hoy en día TKIP está descontinuado debido a problemas de seguridad.
+El segundo protocolo es comúnmente denominado (AES-)CCMP, y es actualmente
+el protocolo de confidencialidad de datos más utilizado. En
+2012, la enmienda 802.11ad añadio un nuevo protocolo de confidencialidad de datos
+llamado el Protocolo Modo Galios/Contador (Galios/Counter Mode Protocol | GCMP). Esta
+enmienda tambien añade soporte para comunicaciones de corto rango en la banda de 60 GHz,
+la cual requiere un cifrado rápido tal como GCM. En este momento, 802.11ad está siendo
+expandido bajo el nombre Wireless Gigabit (WiGig), y se espera que sea adoptado a una
+alta velocidad en los proximos años. Finalmente, la enmienda 802.11ac extiende más GCMP
+añadiendo soporte para claves de 256-bits.
+
+Cuando se usa TKIP, la parte Clave Temporal (Temporal Key | TK) de la clave se sesión
+(PTK) es dividida en una clave de cifrado de 128-bits, y dos claves de Verificación de
+la Integridad del Mensaje (Message Integrity Check | MIC) de 64-bits. La primera clave
+MIC se usa para la comunicación AP-a-cliente, mientras que la segunda se usa en dirección
+contraria. Se usa RC4 para cifrar, con una unica clave por-paquete que es una mezcla
+de la clave de cifrado de 128-bits, la dirección MAC del remitente, y un nonce incremental
+de 48-bits. Este nonce es incrementado despues de de transmitir una trama, usado como contador
+de repetición por el receptor, e inicializado a 1 cuando se instala la TK. La autenticidad
+del mensaje es proporcionada por el algoritmo Michael. Desafortunadamente, Michael es trivial
+de invertir: dados datos en texto plano y su valor MIC, se puede recuperar eficientemente la clave MIC.
+
+
+El protocolo CCMP se basa en el cifrado AES que opera en modo CCMP (modo contador con CBC-MAC).
+Es un algoritmo de Cifrado Autenticado con Datos Asociados (Authenticated Encryption with
+Associated Data | AEAD), y seguro mientras no se repita ningún vector de inicialización (IV)
+bajo una clave en particular. En CCMP el IV es la concatenación de la dirección MAC del remitente,
+una nonce de 48-bits, y algunas banderas adicionales derivadas de la trama transmitida. El nonce
+tambien es usado como un contador de repetición por el receptor, incrementado por uno antes de ser
+enviada cada trama e inicializado a 1 cuando se instala la TK. Este se supone que debe garantizar
+que los IVs no se repitan. Adicionalmente, esta implementación permite que la TK sea usada directamente
+como la clave para ambas direcciones de la comunicación
+
+El protocolo GCMP se basa en AES-GCM, lo que significa que usa el Modo Contador para el cifrado,
+con el texto cifrado resultante siendo autenticado usando la función GHASH. Similar a CCMP, es un
+cifrado AEAD, y es seguro mientras que el IV no se repita bajo una clave en particular. En GCMP,
+el IV es la concatenación de la dirección MAC del remitente y un nonce de 48-bits. El nonce es
+usado también como contador de repetición por el receptor, incrementado por uno antes de enviar
+cada trama, e inicializado a 0 cuando se instala la TK. Esto normalmente asegura que cada IV es
+usado solamente una vez. Como con CCMP, la TK es usada directamente como la clave para ambas
+direcciones de la comunicación. Si el nonce es repetido alguna vez, es posible reconstruir la clave
+de autenticacion utilizada por la función GHASH.
+
+Para indicar que una trama está cifrada y autenticada usando un protocolo de confidencialidad
+de datos, utilizamos la siguiente notación:
+```
+   n
+Enc {.}
+   k
+```
+Aquí ***n*** indica el nonce siendo usado (y, por lo tanto, tambien el contador de repetición).
+El parametro ***k*** indica la clave, la cual es la PTK (clave de sesión) para tráfico de uni-difusión.
+Para tráfico dirigido por grupo, es decir, tramas de difusión y multi-difusión, esta es la GTK
+(clave de grupo). Finalmente, las dos notaciones
+```
+Datos(payload)
+DatosDeGrupo(payload)
+```
+son usadas para representar una trama uni-difusión ordinaria o datos dirigidos por grupo,
+respectivamente, con el payload dado.
+
+
+
