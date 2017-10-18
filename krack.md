@@ -137,7 +137,7 @@ En esta sección presentamos la enmienda 802.11i,
 diversos mensajes y handshakes usados cuando se conecta a una red Wi-Fi,
 y los protocolos de integridad y confidencialidad de datos de 802.11.
 
-## 2.1 La Enmienda 802.11i
+### 2.1 La Enmienda 802.11i
 Despues de que investigadores mostraran que el (Privacidad Cableada Equivalente | Wired Equivalent Privacy) (WEP)
 estaba fundamentalmente roto, el IEEE ofrecio una solución más robusta en la enmienda 802.11i de 802.11.
 Esta enmienda define el 4-way handshake (ver Sección 2.3), y el protocolo de integridad y confidencialidad
@@ -155,7 +155,7 @@ Incluso las redes empresariales dependen del 4-way handshake.
 Por lo tanto, todas las redes Wi-Fi protegidas son afectadas por nuestros ataques.
 El 4-way handshake, GroupKey handshake, y el protocolo CCMP, han sido formalmente analizados y demostrado ser seguros.
 
-## 2.2 Autenticación y Asociación
+### 2.2 Autenticación y Asociación
 Cuando un cliente quiere conectarse a una red Wi-Fi, comienza con (mutua) autenticación y asociación con el AP.
 En la figura 2 se ilustra esto en la fase de asociacion del handshake.
 Sin embargo, cuando se conecta por primera vez a una red, ninguna autenticación real toma lugar en esta fase.
@@ -168,7 +168,7 @@ esto se hace enviando una petición de asociación al AP.
 Este mensaje contiene los conjuntos de pares y grupos de cifrado que el cliente desea usar.
 El AP responde con una respuesta de asociación, informando al cliente si la asociación fue exitosa o no.
 
-## 2.3 El 4-way Handshake
+### 2.3 El 4-way Handshake
 El 4-way handshake proporciona autenticación mutua basada en un
 secreto compartido llamado (Clave Maestra Pareja | Pairwise Master Key) (PMK), y negocia
 una nueva clave de sesión llamada (Clave Transitoria Pareja | Pairwise Transient Key) (PTK). Durante
@@ -297,7 +297,7 @@ de datos usando la PTK actual (Dependemos de esto en la Sección 3.4)
 
 ##### Figura 2: Mensajes intercambiados cuando un solicitante (cliente) se conecta con un autenticador (AP), realiza el 4-way handshake, y ejecuta periódicamente el group key handshake
 
-## 2.4 Protocolos de Integridad y Confidencialidad
+### 2.4 Protocolos de Integridad y Confidencialidad
 La enmienda 802.11i define dos protocolos de confidencialidad de datos.
 El primero se denomina Protocolo de Integridad de Clave (Temporal Key Integrity Protocol | TKIP). Sin embargo,
 hoy en día TKIP está descontinuado debido a problemas de seguridad.
@@ -362,7 +362,7 @@ son usadas para representar una trama uni-difusión ordinaria o datos dirigidos 
 respectivamente, con el payload dado.
 
 
-## 2.5 El Group Key handshake
+### 2.5 El Group Key handshake
 El autenticador renueva la clave de grupo periódicamente, y distribuye esta nuev clave de
 grupo a todos los clientes usando el group key handshake. Este handshake fue provado ser seguro en [39],
 y es ilustrado en la ultima fase de la Figura 2. El autenticador inicia el handshake enviando un mensaje
@@ -446,7 +446,7 @@ MediaTek | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy
 - C: Ciertas pruebas son irrelevantes (no aplicables) porque la implementación no acepta retransmisiones del mensaje 3.
 
 
-## 3.2 El ataque de reinstalación de clave
+### 3.2 El ataque de reinstalación de clave
 Nuestro ataque de reinstalación de clave es fácil de detectar ahora: ya que el solicitante aún acepta retransmisiones del mensaje 3,
 incluso cuando está en el mecánismo PTK-DONE, podemos forzar una reinstalación de la PTK.
 Más precisamente, primero establecemos una posición de hombre en el medio (Man in the Middle) entre el solicitante y el autenticador.
@@ -487,7 +487,7 @@ como del NIC inalambrico (Controlador de Interfaz de Red o Adaptador o Tarjeta d
 Por ejemplo, aunque linux acepta retransmisiones en texto plano del mensaje 3, los NICs Wi-Fi usados por varios dispositivos Android las rechazan.
 Sin embargo, los teléfonos Android con un NIC diferente podrían de hecho aceptar retransmisiones en texto plano del mensaje 3.
 
-## 3.3 Retransmision en texto plano del mensaje 3
+### 3.3 Retransmision en texto plano del mensaje 3
 Si la victima acepta retransmisiones en texto plano del mensaje 3 aún después de instalar la clave de sesión, nuestro ataque de reinstalación
 es sencillo. Primero, el atacante usa un un ataque MitM basado en el canal para poder manipular los mensaje del handshake.
 Entonces evita que el mensaje 4 llegue al autenticador. Esto es ilustrado en la etapa 1 de la Figura 4, inmediatamente después de enviar el
@@ -525,3 +525,54 @@ reinstala una clave. Segundo, si podemos hacer que el AP instale la PTK, tambié
 
 Confirmamos que el ataque mostrado en la Figura 4 funciona contra la implementación MediaTek del cliente Wi-Fi, y contra ciertas versiones de 
 wpa_supplicant (ver Sección 6.3). Cómo atacamos otras implementaciones se explica en la siguiente sección.
+
+### 3.4 Retransmisión Cifrada del mensaje 3
+Ahora describimos cómo podemos atacar clientes que, una vez instalada la PTK, aceptan sólamente retransmisiones cifradas del mensaje 3.
+Para lograr esto, explotamos una condición de carrera inherente entre la entidad ejecutando el 4-way handshake, y la entidad implementando el
+protoclo de confidencialidad de datos.
+
+Como calentamiento, primero atacamos la implementación del solicitante de Android. Aquí encontramos que Android acepta retransmisiones del mensaje 3
+en texto plano cuando son enviados inmediatamente despué del 3er mensaje (ver columna 4 de la Tabla 1).
+La Figura 5 muestra por qué sucede esto y cómo se puede explotar. Tenga en cuenta que el AP no está dibujado en esta figura: sus acciones están
+claras desde el contexto. En nuestro ataque, primero dejamos que el cliente y el AP intercambien el mensaje 1 y 2.
+Sin embargo, no transmitimos el 1er mensaje 3 al cliente. En cambio esperamos a que el AP transmita un segundo mensaje 3.
+En la etapa 2 del ataque; enviamos ambos mensajes 3 inmediatamente uno tras otro al cliente.
+El NIC inalambrico, el cual implementa  el protocolo de confidencialidad de datos, no tiene una PTK instalada, debido a eso redirige ambos
+mensajes a la cola de recepción de paquetes de la CPU principal. La CPU principal, que implementa el 4-way handshake, responde al primer mensaje
+3 y le ordena al NIC inalambrico instalar la PTK. En la etapa 4 del ataque, la CPU principal del cliente toma el segundo mensaje 3 de su cola de
+recepción. Aunque nota que la trama no fue encriptada, Android y Linux permiten tramas EAPOL sin cifrar como una excepción, y por lo tanto la
+CPU principal procesará el paquete 3 retransmitido. Ya que el NIC apenas ha instalado la PTK, la respuesta será encriptada con un valor nonce de 1.
+Después de esto lo ordena al NIC inalambrico que reinstale la PTK. Al hacer esto, el NIC restaura el nonce y el contador de repetición asociados
+a la PTK, lo que significa que la siguiente trama transmitida reutilizará el nonce 1.
+
+Ahora mostramos cómo atacar OpenBSD, OS X y macOS (ver la Tabla 1 columna 5). Estos dispositivos sólamente aceptan retransmisiones cifradas del
+mensaje 3. Similar al ataque en Android, abusamos condiciones de carrera entre el NIC inalambrico y la CPU principal.
+Sin embargo, ahora atacamos una ejecución del 4-way handshake que renueva las PTK (rekeys).
+Recuerde de la Sección 2.3 que todos los mensajes transmitidos durante una nueva operación se cifran usando el protocolo de confidencialidad
+de datos.
+
+La Figura 6 ilustra los detalles del ataque.Tengua en cuenta que el AP no está dibujado en está figura: sus acciones son limpiadas del contexto.
+Una vez más el atacante usa una posición MitM basado en canal. Entonces deja que la victima y el atacante ejecuten el inicial 4-way handshake, y
+espera hasta que un segundo 4-way handshake se inicie para renovar la PTK. A pesar de que el atacante sólo ve tramas cifradas, los mensajes en
+un 4-way handshake pueden ser detectados por su largo unico y su destino. En este punto, el ataque es analogo al caso de Android.
+Es decir, en la etapa 2 del ataque, el atacante no redirige el primer mensaje 3 inmediatamente. En cambio, espera hasta que el AP retransmita
+el mensaje 3, y entonces redirige ambos mensajes uno tras otro a la victima (ver Figura 6 etapa 2). El NIC inalambrico decifrará ambos mensajes
+usando la PTK actual, y los redirigira a la cola de recpción de paquetes de la CPU principal. En la tercera etapa del ataque, la CPU principal
+de la victima procesa el primer mensaje 3, lo responde, y le ordena al NIC que instale la nueva PTK. En la cuarta etapa, la CPI principal toma
+el segundo mensaje 3 de la lista de recepción. Y ya que una PTK está instalada, OpenBSD, OS X y macOS (aquí llamados CPU principal) requeriran
+que el mensaje este cifrado. Sin embargo, no comprueban con que clave fue encriptado el mensaje. Como resultado, a pesar de que el mensaje fue
+decifrado con la PTK antigua, la CPU principal lo procesará. El mensaje 4 enviado como respuesta está cifrado ahora con la nueva PTK usando
+un valor nonce de 1. Después de esto la CPU principal le ordena al NIC que reinstale la nueva PTK, de este modo restaurando el nonce y el contador
+de repetición. Finalmente, la siguiente trama de datos que la victima transmita será cifrado de nuevo usando la nueva PTK con un nonce de 1.
+Nosotros confirmamos este ataque contra OpenBSD 6.1, OS X 10.9.5, y macOS Sierra 10.12.
+
+OpenBSD solo es vulnerable si el cifrado es descargado a la NIC inalámbrica. Por ejemplo, el controlador `iwn` y los dispositivos asociados
+admiten el cifrado de hardware, por lo tanto, son vulnerables. Sin embargo, el controlador `rum` ejecuta el cifrado de software en la misma
+entidad que el 4-way handshake, y no es vulnerable (ver Tabla 1, columna 5).
+
+Esta técnica de ataque requiere que esperemos hasta que se produzca una renovación de la clave de sesión.
+Varios AP hacen esto cada hora, algunos ejemplos son [24, 26]. En la práctica, los clientes también pueden solicitar una renovación enviando
+una trama EAPOL al AP con los bits Request y Pairwise establecidos.
+Coincidencialmente, los routers Broadcom no verifican la autenticidad (MIC) de esta trama, lo que significa que un adversario puede forzar a
+los AP Broadcom a iniciar un handshake de renovación de clave. Con todo combinado, podemos suponer que eventualmente ocurrirá una renovación,
+lo que significa que un atacante puede llevar a cabo el ataque de reinstalación clave.
