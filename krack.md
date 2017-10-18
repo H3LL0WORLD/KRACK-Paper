@@ -576,3 +576,21 @@ una trama EAPOL al AP con los bits Request y Pairwise establecidos.
 Coincidencialmente, los routers Broadcom no verifican la autenticidad (MIC) de esta trama, lo que significa que un adversario puede forzar a
 los AP Broadcom a iniciar un handshake de renovación de clave. Con todo combinado, podemos suponer que eventualmente ocurrirá una renovación,
 lo que significa que un atacante puede llevar a cabo el ataque de reinstalación clave.
+
+### 3.5 Atacando el Handshake PeerKey
+
+El handshake PeerKey está relacionado con el 4-way handshake, y se usa cuando dos clientes quieren comunicarse entre ellos directamente de
+manera segura. Consta de dos fases. En la primera fase, se realiza un handshake de clave maestra (MasterKey | SMK) de Enlace de Estación a
+Estación (Station to Station Link | STSL). Se negocia un secreto maestro compartido entre ambos clientes. En la segunda fase, una clave de sesión nueva se deriva de esta clave maestra usando el handshake STSL de Clave Transitoria (STSL Transient Key | STK).
+Aunque este protocolo no parece ser ampliamente compatible, constituye un buen caso de prueba para medir que tan aplicable es nuestra técnica
+de reinstalación de clave.
+
+Como era de esperarse, el handshake SMK no se ve afectado por nuestro ataque de reinstalación de claves.
+Después de todo, la clave maestra negociada en este handshake no es utilizada por un protocolo de confidencialidad de datos,
+lo que significa que no hay nonces o contadores de repetición que restaurar. Sin embargo, el handshake STK se basa en el 4-way handshake,
+y sí instala una clave para su uso mediante un protocolo de confidencialidad de datos. Como resultado, se puede atacar de la misma manera
+que el 4-way handshake.
+El ataque resultante se probó contra wpa_supplicant. Para llevar a cabo la prueba, modificamos otra instancia de wpa_supplicant para enviar
+un segundo mensaje 3 (retransmitido). Esto confirmó que un wpa_supplicant no modificado reinstalará la clave STK al recibir un
+mensaje 3 retransmitido del handshake STK.
+Sin embargo, no encontramos otros dispositivos que soporten PeerKey. Como resultado, el impacto de nuestro ataque contra el handshake PeerKey es bastante bajo.
