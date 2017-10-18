@@ -633,3 +633,21 @@ Adicionalmente, los clientes pueden activar un handshake de clave grupal enviand
 De nuevo, los routers Broadcom no verifican la autenticidad del mensaje, lo que significa que un atacante puede falsificarlo para activar una
 actualización de la clave grupal. Con todo combinado, podemos asumir que la mayoria de redes eventualmente ejecutarán una actualización de
 clave grupal, la cual podemos atacar posteriormente.
+
+## 4.2 Atacando la Instalación de Clave Inmediata
+La figura 7 ilustra nuestro ataque de reinstalación de clave cuando el AP instala inmediatamente la clave grupal despues de enviar el mensaje
+grupal 1 a todos los clientes. Tenga en cuenta que los mensajes de handshakes de clave grupal se cifran usando el algoritmo de confidencialidad
+de datos con la PTK actual. Al recibir el mensaje grupal 1, el cliente instala la nueva GTK y responde con el mensaje grupal 2. El atacante impide
+que este mensaje llegue el AP. Por lo cual, el AP retransmitirá un nuevo mensaje grupal 1 en la etapa 2 del ataque. Ahora esperamos hasta
+que una trama de difusión sea transmitida, y la redirigimos hacia la victima. Despues de esto, redirigimos el mensaje grupal 1 de la etapa 2
+a la victima. Como resultado, la victima reinstalará GTK, y de este modo reiniciará su contador de repetición asociado. Esto nos permite repetir
+la trama de difusión (ver Etapa 5). El cliente acepta está esta trama ya que su contador de repetición fue reiniciado.
+
+Es esencial que la trama de difusión que repetimos se envíe antes de la retransmisión del mensaje grupal 1. Esto se debe a que el mensaje grupal
+1 contiene el valor actual del contador de repetición de la clave grupal (recordar la Sección 2.5). Por lo tanto, si se envía después de la
+trama de difusión, contendría el contador de repetición actualizado, y por lo tanto, no se puede abusar para reiniciar el contador de
+repetición de la víctima.
+
+Confirmamos este ataque en la práctica para APs que instalan la clave grupal inmediatamente despues de enviarl el mensaje grupal 1
+(ver Tabla 2, columna 3). Basado en nuestros experimentos, todos los clientes Wi-Fi son vulnerables a este ataque cuando estan conectados a un
+AP que se comporta de esta manera.
