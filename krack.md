@@ -382,11 +382,11 @@ Finalmente, si un cliente transmite una trama de difusión o multi-difusión, la
 una trama uni-difusión al AP. El AP entonces encripta la trama usando la clave de grupo, y la transmite
 a todos los clientes. Esto asegura que todos los clientes dentro del rango del AP reciban la trama.
 
-# 3 ATACANDO EL 4-WAY HANDSHAKE
+## 3 ATACANDO EL 4-WAY HANDSHAKE
 En esta sección mostramos que el mecánismo de declaración detrás del 4-way handshake es vulnerable a un ataque de reinstalación de claves.
 Entonces demostramos cómo ejecutar este ataque en entornos de la vida real.
 
-## 3.1 Mecánismo de Declaración del Solicitante
+### 3.1 Mecánismo de Declaración del Solicitante
 La enmienda 802.11i no contiene un mecánismo de declaración formal describiendo cómo el solicitante
 debe implementar el 4-way handshake. En cambio, sólamente proporciona pseudo-código que describe cómo,
 pero no cuando, ciertos mensajes del handshake deben ser procesados.
@@ -417,7 +417,7 @@ del mensaje 1 o 3, coincidiendo el mecánismo de declaración de 802.11r. Adicio
 debe instalar la PTK despues de procesar y responder el mensaje 3. Esto una vez más coincide con el mecánismo de declaración
 dado en 802.11r.
 
-### Tabla 1: Comportamiento de clientes
+#### Tabla 1: Comportamiento de clientes
 Columnas:
 1. Clientes
 2. Muestra si la retransmisión del mensaje 3 es aceptada.
@@ -511,7 +511,7 @@ Ahora volvemos a la etapa 4 del ataque. La meta de está etapa es completar el h
 la victima ya instalo la PTK, lo que significa que el mensaje está cifrado. Y como el autenticado aún no ha instalado la PTK, esto normalmente
 rechazaría este mensaje 4 cifrado. Sin embargo, una cuidadosa inspección del estandar 802.11 revela que el autenticador podría aceptar
 ***cualquier*** contador de repetición usado en el 4-way handshake, no sólamente el último:
-> "Al recibir el mensaje 4, el Autenticador verifica que el valor del campo Contador de Repetición de Clave sea una usado en este 4-way handshake"
+> "Al recibir el mensaje 4, el Autenticador verifica que el valor del campo Contador de Repetición de Clave sea uno usado en este 4-way handshake"
 
 En la práctica, encontramos que vaios APs en efecto aceptan un contador de repetición antiguo. Más precisamente, algunos APs aceptan contadores
 de repetición usados en un mensaje al cliente, pero no han sido usados aún en una respuesta del cliente (ver columna 2 en Tabla 2 en la página 8).
