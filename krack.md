@@ -362,4 +362,22 @@ son usadas para representar una trama uni-difusión ordinaria o datos dirigidos 
 respectivamente, con el payload dado.
 
 
+## 2.5 El Group Key handshake
+El autenticador renueva la clave de grupo periódicamente, y distribuye esta nuev clave de
+grupo a todos los clientes usando el group key handshake. Este handshake fue provado ser seguro en [39],
+y es ilustrado en la ultima fase de la Figura 2. El autenticador inicia el handshake enviando un mensaje
+de grupo 1 a todos los clientes. El solicitante reconoce la recepción de la nueva clave de grupo
+respondiendo con un mensaje de grupo 2. Dependiendo de la implementación, el autenticador instala
+la nueva GTK bien sea, antes de enviar el mensaje de grupo 1, o despues de recibir una respuesta
+de todos los clientes conectados (ver Sección 4).
+Finalmente, el mensaje de grupo 1 tambien contiene el Contador de Repetición de Recepción actual de la
+clave de grupo en el campo RSC (ver Figura 1).
 
+Ambos mensajes en el grop key handshake son definidos usando tramas EAPOL, y son representados como Grupo1
+y Grupo2 en la Figura 2.
+Tenga en cuenta que el mensaje de grupo 1 almacena la nueva clave de grupo en el campo Datos de Clave,
+y por lo tanto es cifrada usando la KEK (recordar la Figura 1). Desde este punto una PTK es instalada,
+la trama EAPOL completa es protegida usando un protocolo de confidencialidad de datos.
+Finalmente, si un cliente transmite una trama de difusión o multi-difusión, la envía primero como
+una trama uni-difusión al AP. El AP entonces encripta la trama usando la clave de grupo, y la transmite
+a todos los clientes. Esto asegura que todos los clientes dentro del rango del AP reciban la trama.
