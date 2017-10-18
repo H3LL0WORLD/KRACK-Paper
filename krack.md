@@ -416,3 +416,44 @@ el AP retransmita el mensaje 1 o 3 si no recibio una respuesta. Por lo tanto, el
 del mensaje 1 o 3, coincidiendo el mecánismo de declaración de 802.11r. Adicionalmente, 802.11i declara que el cliente
 debe instalar la PTK despues de procesar y responder el mensaje 3. Esto una vez más coincide con el mecánismo de declaración
 dado en 802.11r.
+
+## 3.2 El ataque de reinstalación de clave
+Nuestro ataque de reinstalación de clave es fácil de detectar ahora: ya que el solicitante aún acepta retransmisiones del mensaje 3,
+incluso cuando está en el mecánismo PTK-DONE, podemos forzar una reinstalación de la PTK.
+Más precisamente, primero establecemos una posición de hombre en el medio (Man in the Middle) entre el solicitante y el autenticador.
+Usamos está posición MitM para activar retransmisiones del mensaje 3 al prevenir que el mensaje 4 llegue al autenticador.
+Como resultado, este retransmitirá el mensaje 3, lo cual causa que el solicitante reinstale una clave PTK ya en uso.
+A su vez, esto restaura el nonce usado por el protocolo de confidencialidad de datos. Dependiendo del protocolo siendo usado,
+esto le permite a un atacante repetir, decifrar, y/o falsificar paquetes.
+En la Seccion 6.1 exploraremos en detalle cuales son los impactos prácticos de la reutilizacion del nonce para cada protocolo de confidencialidad.
+
+En la práctica, surgen algunas complicaciones cuando se ejecuta el ataque.
+Primero, no todos los clientes Wi-Fi implementan el mecánismo de declaración.
+En particular, Windoes y iOS no aceptan retransmisiones del mensaje 3 (ver Tabla 1 columna 2).
+Esto viola el estandar 802.11. Como resultado, estas implementaciones no son vulnerables a nuestro ataque de reinstalación de claves contra
+el 4-way handshake. Desafortunadamente, desde una perspectiva de defensores, tanto iOS como Windows aún son vulnerables a nuestro ataque
+de reinstalación de claves contra el group key handshake (ver Seccion 4).
+Adicionalmente, ya que ambos Sistemas Operativos soportan 802.11r, es aún posible atacarlos indirectamente realizando un ataque de reinstalación
+de clave contra el AP durante un FT handshake (ver Seccion 5).
+
+Un segundo obstáculo menor es que debemos obtener una posición MitM entre el Cliente y el AP.
+Esto no se puede hacer configurando un AP falso con una dirección MAC diferente,
+y entonces redirigiendo los paquetes entre el AP real y el cliente.
+Recordar de la Seccion 2.3 que la clave de sesión se basa en la dirección MAC del cliente y el AP,
+significando que ambos generarian un clave de sesión diferente, lo que causaría que el ataque y el handshake fallen.
+En su lugar, empleamos un ataque MitM basado en el canal, donde el AP es clonado en un diferente canal con la misma dirección MAC
+del AP seleccionado. Esto asegura que el cliente y el AP generen la misma clave de sesión.
+
+El tercer obstáculo es que ciertas implementaciones sólamente aceptan tramas protegidas usando el protocolo de confidencialidad de datos
+una vez que una PTK ha sido instalada (ver Tabla 1 columna 3). Esto es problematico para nuestro ataque, ya que el autenticador
+retransmitira el mensaje 3 sin cifra. Esto significa que el mensaje 3 retransmitido será ignorado por el solicitante.
+Aunque esto parece frustrar nuestro ataque, encontramos una técnica para saltarse este problema (ver Sección 3.4).
+
+En las siguientes dos Secciones, describiremos con detalle cómo ejecutar nuestro ataque de reinstalación de claves contra el 4-way
+handshake bajo varias condiciones. Más precisamente, primero explicamos nuestro ataque cuando el cliente (victima) acepta retransmisiones
+en texto plano del mensaje 3 (ver Tabla 1 columna 3). Entonces demostramos el ataque cuando la victima acepta sólamente retransmisiones cifradas
+del mensaje 3 (ver Tabla 1 columna 4). La Tabla 1 columna 6 resume que dispositivos son vulnerables a alguna variante del ataque de reinstalacion
+de claves contra el 4-way handshake. Recalcamos que el comportamiento de un dispositivo depende tanto del sistema operativo
+como del NIC inalambrico (Controlador de Interfaz de Red o Adaptador o Tarjeta de Red, etc..) usado.
+Por ejemplo, aunque linux acepta retransmisiones en texto plano del mensaje 3, los NICs Wi-Fi usados por varios dispositivos Android las rechazan.
+Sin embargo, los teléfonos Android con un NIC diferente podrían de hecho aceptar retransmisiones en texto plano del mensaje 3.
