@@ -594,3 +594,42 @@ El ataque resultante se probó contra wpa_supplicant. Para llevar a cabo la prue
 un segundo mensaje 3 (retransmitido). Esto confirmó que un wpa_supplicant no modificado reinstalará la clave STK al recibir un
 mensaje 3 retransmitido del handshake STK.
 Sin embargo, no encontramos otros dispositivos que soporten PeerKey. Como resultado, el impacto de nuestro ataque contra el handshake PeerKey es bastante bajo.
+
+## 4 ROMPIENDO EL HANDSHAKE DE CLAVE GRUPAL
+En esta sección aplicamos nuestra técnica de reinstalación de clave contra el handshake de clave grupal. Mostramos que todos los cliente Wi-Fi
+son vulnerables, permitiendo que un atacante repita tramas de difusión y multidifusión.
+
+### 4.1 Detalles del handshake de clave grupal
+Las redes renuevan la clave grupal periodicamente, para asegurar de que sólo los clientes autorizados recientemente posean esta clave.
+En el caso más defensivo la clave grupal es renovada cada vez que un cliente se desconecta de la red. La nueva clave grupal se distribuye
+usando un handshake de clave grupal, y este handshake ha sido formalmente provado como seguro en [39]. Como se muestra en la Figura 2,
+el handshake es iniciado por el AP cuando envía un mensaje de grupo 1 a todos los clientes. El AP retransmite este mensaje si no recibio una
+respuesta adecuada. Tenga en cuenta que el contador de repetición EAPOL de estos mensajes retransmitidos se incrementa siempre por 1. En nuestro
+ataque, la meta es coleccionar un mensaje de grupo 1 retransmitido, bloquearlo para que no llegue al cliente, y redirigirlo al cliente en un
+momento posterior.
+Esto hará que el cliente reinicie el contador de repetición de la clave grupal instalada.
+
+El primer pre-requisito de nuestro ataque, es que el cliente reiniciará el contador de repetición cuando instale una clave grupal ya-en-uso.
+Ya que el cliente también usa el primitivo MLME-SETKEYS.request para instalar la clave grupal, este debería ser el caso. Nosotros confirmamos
+que en la práctica todos los clientes Wi-Fi en efecto reiniciaron el contador de repetición de una clave grupal ya-en-uso (ver Tabla 1, columna 7).
+Por lo tanto, todos los clientes Wi-Fi son vulnerables a nuestros ataques posteriores.
+
+El segundo pre-requisito es que debemos poder reunir un mensaje grupal 1 que el cliente (todavía) acepte, y que contenga una clave grupal que ya
+este en uso por el AP. El cómo lograr esto depende de cuando el AP comienza a usar la clave grupal. En particular, el AP podría comenzar a usar la
+clave grupal inmediatamente despues de enviar el primer mensaje grupal 1, o podría retrasar la instalación de la clave grupal hasta que el cliente
+responda usando un mensaje grupal 2. La Tabla 2, columna 3, resume este comportamiento para varios APs. Tenga en cuenta que de acuerdo al estandar,
+la nueva clave grupal debería ser instalada después de que todas las estaciones respondan con un mensaje grupal 2, es decir, la GTK debe ser
+instalada de una forma retrasada [1, 12-53]. Cuando el AP instala la clave inmediatamente, nuestro ataque de reinstalación de clave es sencillo.
+Sin embargo, si un AP instala la clave grupal de una manera retrasada, nuestro ataque se vulve más intricante, Discutiremos ambos en casos en más
+detalles en la Sección 4.2 y 4.3, respectivamente.
+
+Recordar de la Sección 2.3 que sólamente el AP transmitirá tramas de difusión y multi-difusión reales (es decir, tramas de grupo) las cuales
+estan cifradas usando la clave grupal. Ya que nuestro ataque de reinstalación de claves se dirige al cliente, esto significa que no podemos forzar
+la reutilización del nonce en el cifrado.
+Sin embargo, el cliente el contador de repetición cuando reinstala la clave grupal, lo cual puede ser abusado para repetir tramas hacia los clientes.
+
+La mayoria de APs renuevan la clave grupal cada hora. Algunas redes incluso renuevan la clave cada vez que un cliente abandona la red.
+Adicionalmente, los clientes pueden activar un handshake de clave grupal enviando una trama EAPOL cifrada con las banderas Request y Group.
+De nuevo, los routers Broadcom no verifican la autenticidad del mensaje, lo que significa que un atacante puede falsificarlo para activar una
+actualización de la clave grupal. Con todo combinado, podemos asumir que la mayoria de redes eventualmente ejecutarán una actualización de
+clave grupal, la cual podemos atacar posteriormente.
