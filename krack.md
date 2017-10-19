@@ -651,3 +651,33 @@ repetición de la víctima.
 Confirmamos este ataque en la práctica para APs que instalan la clave grupal inmediatamente despues de enviarl el mensaje grupal 1
 (ver Tabla 2, columna 3). Basado en nuestros experimentos, todos los clientes Wi-Fi son vulnerables a este ataque cuando estan conectados a un
 AP que se comporta de esta manera.
+
+## 4.3 Atacando la Instalación de Clave Retrasada
+Atacar el handshake de clave grupal cuando el AP instala la GTK de un manera retrasada es más tedioso. Tenga en cuenta que el ataque anterior
+fallaría ya que la trama de difusión transmitida en la etapa 3 de la Figura 7 estaría cifrada todavía por la clave grupal antigua. Esto es
+problematico porque el mensaje grupal 1 (re)instala la nueva clave grupal, y debido a eso, no puede ser usada para restaurar el contador de
+repetición de la antigua clave grupal.
+
+Una forma de aborder este problema está ilustrada en la Figura 8. Las primeras 2 etapas de este ataque son similares a las anteriores.
+Es decir, el AP genera una nueva clave grupal, la transporta a la victima, y el atacante impide que el mensaje grupal 2 llege al AP.
+Esto hace que el AP retransmita el mensaje grupal 1 usando un contador de repetición EAPOL incrementado de `r + 1`.
+Sin embargo, en la etapa 3 del ataque, redirigimos el antiguo mensaje grupal 2 con el contador de repetición `r` al AP.
+Interesantemente, el AP debería aceptar este mensaje aunque este no use el último valor contador de repetición.
+> Al recibir el mensaje [grupal] 2, el AP verifica que el valor del campo del contador de repetición de clave coincida con uno
+que haya sido utilizado en el handshake de clave grupal.
+
+El estandar no requiere que el contador de repetición coincida con el ***último*** que el AP ha usado. En cambio, debe coincidir con uno
+usado en el handshake de clave grupal, es decir, uno usado en cualquiera de los mensajes grupales 1 (re)transmitidos. En práctica descubrimos
+que en efecto varias implementaciones aceptan este antiguo aún-no-recibido contador de repetición (ver Tabla 2, columna 2). Como resultado,
+el AP instala la nueva clave grupal. Desde este punto, el ataque continua de una manera similar al anterior. Es decir, esperamos hasta que
+una trama de difusión sea transmitida, realizamos la reinstalación de la clave grupal en la etapa 5 del ataque, entonces repetimos la trama
+de difusión en la etapa 6.
+
+Nuevamente es esencial que la trama de difusión que queremos repetir sea enviada antes de la retransmisión del mensaje grupal 1.
+De otra manera incluiria el contador de repetición actualizado de la clave grupal.
+
+Probamos este ataque contra APs que instalan la GTK de una manera retrasada, y que aceptan contadores de repetición que han enviado en un
+mensaje al cliente, pero aún no lo recibieron en una respuesta (recordar Tabla 2, columna 2). Tenga en cuenta que ya sabemos que todos los
+clientes Wi-Fi restauran el contador de repetición cuando reinstalan una GTK, y por lo tanto son todos vulnerables.
+Finalmente, un AP OpenBSD no es vulnerable ya que instala la GTK de una manera retrasada, y sólamente acepta el último contador de repetición.
+
