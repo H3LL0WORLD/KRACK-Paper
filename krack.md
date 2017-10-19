@@ -382,7 +382,7 @@ Finalmente, si un cliente transmite una trama de difusión o multi-difusión, la
 una trama uni-difusión al AP. El AP entonces encripta la trama usando la clave de grupo, y la transmite
 a todos los clientes. Esto asegura que todos los clientes dentro del rango del AP reciban la trama.
 
-## 3 ATACANDO EL 4-WAY HANDSHAKE
+## 3. ATACANDO EL 4-WAY HANDSHAKE
 En esta sección mostramos que el mecánismo de declaración detrás del 4-way handshake es vulnerable a un ataque de reinstalación de claves.
 Entonces demostramos cómo ejecutar este ataque en entornos de la vida real.
 
@@ -595,7 +595,7 @@ un segundo mensaje 3 (retransmitido). Esto confirmó que un wpa_supplicant no mo
 mensaje 3 retransmitido del handshake STK.
 Sin embargo, no encontramos otros dispositivos que soporten PeerKey. Como resultado, el impacto de nuestro ataque contra el handshake PeerKey es bastante bajo.
 
-## 4 ROMPIENDO EL HANDSHAKE DE CLAVE GRUPAL
+## 4. ROMPIENDO EL HANDSHAKE DE CLAVE GRUPAL
 En esta sección aplicamos nuestra técnica de reinstalación de clave contra el handshake de clave grupal. Mostramos que todos los cliente Wi-Fi
 son vulnerables, permitiendo que un atacante repita tramas de difusión y multidifusión.
 
@@ -681,3 +681,74 @@ mensaje al cliente, pero aún no lo recibieron en una respuesta (recordar Tabla 
 clientes Wi-Fi restauran el contador de repetición cuando reinstalan una GTK, y por lo tanto son todos vulnerables.
 Finalmente, un AP OpenBSD no es vulnerable ya que instala la GTK de una manera retrasada, y sólamente acepta el último contador de repetición.
 
+## 5. ATACANDO EL HANDSHAKE FT 802.11R
+En esta sección presentamos el handshake de Transición BSS Rápida (Fast BSS Transition | FT), y mostramos que implementaciónes de este son
+afectadas por nuestro ataque de reinstalación de clave.
+
+## 5.1 El handshake de Transición BSS Rápida (FT)
+La enmienda 802.11r añadio el handshake Transición de Conjunto de Servicio Básico Rápida (Fast Basic Service Set (BSS) Transision (FT)).
+Su meta es reducir el tiempo de transmisión cuando un cliente se mueve de un AP, a otro en la misma red protegida
+(es decir, del mismo Conjunto de Servicio Básico). Tradicionalmente, esto requiere un handshake que incluya un nuevo 802.1x y 4-way handshake
+(recordar Figura 2). Sin embargo, ya que el FT handshake confía en las claves maestras derivadas durante una conexión previa con la red, un nuevo
+handshake 802.1x no es requerido. Adicionalmente, esto añade la etapa del 4-way handshake en las tramas de autenticación y reasociación.
+
+Un handshake FT normal se muestra en la etapa 1 de la Figura 9. Observe que a diferencia del 4-way handshake, el FT handshake es iniciado por el
+solicitante. Los primeros dos mensajes son una Petición de Autenticación (AuthReq), y una Respuesta de Autenticación (AuthResp).
+Son funcionalmente equivalentes al Mensaje 1 y 2 del 4-way handshake, respectivamente, y llevan nonces generados aleatoriamene que serán
+usados para derivar una nueva clave de sesión.
+Después de esto, el cliente envía una Petición de Reasociación (ReassoReq), y el AP responde con una Respuesta de Reasociación (ReassoResp).
+Son funcionalmente similares al Mensaje 3 y 4 del 4-way handshake, finalizan el FT handshake y transportan la GTK al cliente.
+
+Sólo los dos mensajes de reasociación son autenticados usando un MIC (ver Figura 9). Adicionalmente, ninguno de los mensajes en el FT handshake
+contiene un contador de repetición. En cambio, El FT handshake depende del ANonce y SNonce aleatorio para brindar protección de repetición entre
+diferentes invocaciónes del handshake.
+
+De acuerdo al estandar, la PTK debe ser instalada después de que la respuesta de autenticación sea envíada o recibida. Esto se ilustra con
+las cajas grises en la etapa 1 de la Figura 9. Adicionalmente, el puerto lógico de 802.1x sólamente se abre después de enviar o recibir la
+petición de reasociación.
+
+Esto se asegura de que, aunque la PTK ya este instalada mientras el handshake este todavia en progreso, el AP y el cliente sólo aceptan y
+transmiten tramas una vez el handshake se ha completado. Combinado, esto implica que el handshake FT, tal y como se define en la enmienda 802.1r,
+no es vulnerable a un ataque de reinstalación de clave. Sin embargo, por medio de experimientos e inspecciones al código, encontramos que 
+la mayoria de implementaciones en realidad instalán la PTK, así como la GTK, después de enviar o recibir la repuesta de autenticación.
+Este comportamiento se ilustra con las cajas negras en la etapa 1 de la Figura. Como resultado, en la práctica la mayoria de las implementaciones
+del FT handshake ***son*** vulnerables al ataque de reinstalación de clave.
+
+### 5.2 Un Ataque de Reinstalación de Clave contra el AP
+Debido a que el AP instala la PTK en respuesta a una petición de reasociación, nuestro objetivo será repetir esta trama. Recalcamos que, en la
+prácticam los APs deberían aceptar peticiones de reasociación. Esto se debe a que la respuesta de reasociación del AP podría perderse debido
+al ruido de fondo, haciendo que el cliente envíe una nueva petición.
+
+La Figura 9 muestra el ataque de reinstalación de clave resultante contra el handshake FT. Tenga en cuenta que no requerimos una posición de
+hombre-en-el-medio. En cambio, poder escuchar a escondidas e inyectar tramas es suficiente. En la primera etapa del ataque, permitimos que el
+cliente y el AP ejecuten un FT handshake normal. Entonces esperamos a que el AP haya transmitido una o más tramas de datos cifradas.
+En este punto, le repetimos la petición de reasociación al AP. Ya que no contiene un contador de repetición, y contiene un MIC valido, el AP
+aceptará y procesará la trama repetida. Como resultado, el AP reinstalará la PTK en la etapa 3 del ataque, de este modo restaura el nonce
+y contador de repetición asociados. Finalmente, la siguiente trama de enviada por el AP será encriptada usando un nonce ya-en-uso. Similar a
+nuestros previos ataques de reinstalación de claves, esto tambien le permite a un atacante repetir tramas de datos antiguas enviadas por el
+cliente al AP. Recalcamos que nuestro ataque es particularmente devastador contral el FT handshake ya que sus mensajes no contienen un contador
+de repetición. Esto le permite a un atacante repetir una petición de autenticación de manera continua, restaurando cada vez el nonce y el
+contador de repetición usados por el AP.
+
+Probamos este ataque conta todos nuestros tres APs que soportan 802.11r. El primero es la implementación de código abierto hostapd, la segunda es
+la implementación para routers dómesticos MediaTek ejecutandose en un Linksys RE700, y el último es un AP Aerohive profesional.
+Los tres fueron vulnerables al ataque de reinstalación de clave anterior.
+
+Tenga en cuenta que si la respuesta de reasociación se pierde debido al ruido de fondo, el cliente retransmitirá la petición de reautenticación
+espontaneamente, provocando que el AP reinstale la clave. Es decir, sin que un at.acante este presente, los AP ya podrían estar reusando nonces.
+
+Tenga en cuenta que los mensajaes en el handshake nunca se someten a protección (adicional) usando un protocolo de confidencialidad de datos.
+En particular, Management Frame Protection (MFP) no protege tramas de autenticación y reasociación. Por lo tanto, los ataques de reinstalación
+de clave contra el FT handshake son triviales incluso si MFP esta activado.
+
+### 5.3 Abusando de las Solicitudes de Transición BSS
+Un handshake FT sólo se realiza cuando una estación se translada de un AP a otro. Esto limita cuando puede tomar lugar un ataque. Sin embargo,
+podemos forzar a un cliente a realizar un FT handshake de la siguiente manera. Primero, suponga que un cliente está conectado a un AP de una
+red que soporta 802.1r. Entonces, si ningun otro AP de la red está en el rango del cliente, clonamos un AP real de está red al lado del cliente
+usando un ataque de aguro gusano (wormhole). Esto le hace pensar al cliente que otro AP de la red seleccionada esta cerca. Finalmente, enviamos
+una Petición de Gestión de Transición BSS al cliente. Esta trama se usa para equilibrar la carga y le ordena al cliente trasladarse a otro AP.
+Es una trama de gestión no autenticada, y por lo tanto puede ser falsificada por un atacante. En consecuencia, el cliente acepta esta trama, y
+se traslada al AP (wormholed) usando un FT handshake.
+
+Probamos esto contra clientes que soportan 802.11r. Esto confirmó que wpa_supplicant, iOS y Windows aceptan la petición de transicion, y se
+trasladan a otro AP usando un FT handshake.
