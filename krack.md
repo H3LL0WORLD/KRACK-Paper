@@ -236,7 +236,7 @@ clave de grupo y protegerla de ataques de degradación (downgrade).
 
 Tenga en cuenta que en una conexion existente, la PTK puede ser renovada
 iniciando un nuevo 4-way handshake. Durante esta renovación, todos los mensajes
-del 4-way handshake son encriptados por el protocolo de confidencialidad
+del 4-way handshake son cifrados por el protocolo de confidencialidad
 de datos usando la PTK actual (Dependemos de esto en la Sección 3.4)
 
 ```
@@ -379,7 +379,7 @@ Tenga en cuenta que el mensaje de grupo 1 almacena la nueva clave de grupo en el
 y por lo tanto es cifrada usando la KEK (recordar la Figura 1). Desde este punto una PTK es instalada,
 la trama EAPOL completa es protegida usando un protocolo de confidencialidad de datos.
 Finalmente, si un cliente transmite una trama de difusión o multi-difusión, la envía primero como
-una trama uni-difusión al AP. El AP entonces encripta la trama usando la clave de grupo, y la transmite
+una trama uni-difusión al AP. El AP entonces cifra la trama usando la clave de grupo, y la transmite
 a todos los clientes. Esto asegura que todos los clientes dentro del rango del AP reciban la trama.
 
 ## 3. ATACANDO EL 4-WAY HANDSHAKE
@@ -540,8 +540,8 @@ En la etapa 2 del ataque; enviamos ambos mensajes 3 inmediatamente uno tras otro
 El NIC inalambrico, el cual implementa  el protocolo de confidencialidad de datos, no tiene una PTK instalada, debido a eso redirige ambos
 mensajes a la cola de recepción de paquetes de la CPU principal. La CPU principal, que implementa el 4-way handshake, responde al primer mensaje
 3 y le ordena al NIC inalambrico instalar la PTK. En la etapa 4 del ataque, la CPU principal del cliente toma el segundo mensaje 3 de su cola de
-recepción. Aunque nota que la trama no fue encriptada, Android y Linux permiten tramas EAPOL sin cifrar como una excepción, y por lo tanto la
-CPU principal procesará el paquete 3 retransmitido. Ya que el NIC apenas ha instalado la PTK, la respuesta será encriptada con un valor nonce de 1.
+recepción. Aunque nota que la trama no fue cifrada, Android y Linux permiten tramas EAPOL sin cifrar como una excepción, y por lo tanto la
+CPU principal procesará el paquete 3 retransmitido. Ya que el NIC apenas ha instalado la PTK, la respuesta será cifrada con un valor nonce de 1.
 Después de esto lo ordena al NIC inalambrico que reinstale la PTK. Al hacer esto, el NIC restaura el nonce y el contador de repetición asociados
 a la PTK, lo que significa que la siguiente trama transmitida reutilizará el nonce 1.
 
@@ -560,7 +560,7 @@ el mensaje 3, y entonces redirige ambos mensajes uno tras otro a la victima (ver
 usando la PTK actual, y los redirigira a la cola de recpción de paquetes de la CPU principal. En la tercera etapa del ataque, la CPU principal
 de la victima procesa el primer mensaje 3, lo responde, y le ordena al NIC que instale la nueva PTK. En la cuarta etapa, la CPI principal toma
 el segundo mensaje 3 de la lista de recepción. Y ya que una PTK está instalada, OpenBSD, OS X y macOS (aquí llamados CPU principal) requeriran
-que el mensaje este cifrado. Sin embargo, no comprueban con que clave fue encriptado el mensaje. Como resultado, a pesar de que el mensaje fue
+que el mensaje este cifrado. Sin embargo, no comprueban con que clave fue cifrado el mensaje. Como resultado, a pesar de que el mensaje fue
 decifrado con la PTK antigua, la CPU principal lo procesará. El mensaje 4 enviado como respuesta está cifrado ahora con la nueva PTK usando
 un valor nonce de 1. Después de esto la CPU principal le ordena al NIC que reinstale la nueva PTK, de este modo restaurando el nonce y el contador
 de repetición. Finalmente, la siguiente trama de datos que la victima transmita será cifrado de nuevo usando la nueva PTK con un nonce de 1.
@@ -724,7 +724,7 @@ hombre-en-el-medio. En cambio, poder escuchar a escondidas e inyectar tramas es 
 cliente y el AP ejecuten un FT handshake normal. Entonces esperamos a que el AP haya transmitido una o más tramas de datos cifradas.
 En este punto, le repetimos la petición de reasociación al AP. Ya que no contiene un contador de repetición, y contiene un MIC valido, el AP
 aceptará y procesará la trama repetida. Como resultado, el AP reinstalará la PTK en la etapa 3 del ataque, de este modo restaura el nonce
-y contador de repetición asociados. Finalmente, la siguiente trama de enviada por el AP será encriptada usando un nonce ya-en-uso. Similar a
+y contador de repetición asociados. Finalmente, la siguiente trama de enviada por el AP será cifrada usando un nonce ya-en-uso. Similar a
 nuestros previos ataques de reinstalación de claves, esto tambien le permite a un atacante repetir tramas de datos antiguas enviadas por el
 cliente al AP. Recalcamos que nuestro ataque es particularmente devastador contral el FT handshake ya que sus mensajes no contienen un contador
 de repetición. Esto le permite a un atacante repetir una petición de autenticación de manera continua, restaurando cada vez el nonce y el
@@ -793,3 +793,133 @@ Por último, en varios casos podemos falsificar mensajes del cliente hacia el AP
 Curiosamente, el AP generalmente no es el destino final de una trama, en su lugar, reenviará la trama a su destino real.
 Esto significa que podemos falsificar paquetes hacia cualquier dispositivo conectado a la red. Dependiendo del AP, incluso es posible enviar
 un trama que se refleje de nuevo al cliente.
+
+### 6.2 Ejemplos de escenarios de ataque
+Entre otras cosas, nuestros ataques de reinstalación de clave permiten a un atacante descifrar un paquete TCP,
+conocer el número de secuencia y secuestrar el stream TCP para inyectar datos arbitrarios.
+Esto permite uno de los ataques más comunes a través de redes Wi-Fi: inyectar datos maliciosos en una conexión HTTP no cifrada.
+
+La capacidad de repetir tramas de difusión y multidifusión, es decir, tramas de grupo, también es una clara violación de seguridad.
+Para ilustrar cómo esto podría afectar a sistemas reales, considere el protocolo de tiempo de red (Network Time Protocol | NTP) que funciona
+en modo de difusión. En este modo, el cliente primero pasa por un proceso de inicialización y luego sincroniza su reloj escuchando paquetes NTP de difusión autenticados.
+
+Malhotra y Goldberg han demostrado que si se repiten estas tramas de transmisión, las víctimas se quedan atrapadas en un momento determinado
+para siempre. Usando nuestro ataque de clave grupal, podemos reproducir estas tramas incluso si se envían a través de una red Wi-Fi protegida.
+Tenga en cuenta que manipular el tiempo de esta manera quebranta la seguridad, por ejemplo, los certificados TLS, DNSSEC, autenticación
+Kerberos y bitcoin. Otro ejemplo es el protocolo de automatización del hogar xAP y xPL.
+En general, utilizan paquetes UDP de difusión para enviar comandos a los dispositivos. Suponemos que nuestro ataque clave de reinstalación
+nos permite repetir estos comandos. Todos estos ejemplos combinados, ilustran que no debe subestimarse el impacto de repetir tramas de
+transmisión o multidifusión.
+
+### 6.3 Vulnerabilidad de clave de cifrado de sólo ceros
+Nuestro ataque de reinstalación de clave contra el 4-way handshake descubrió un comportamiento especial en wpa_supplicant.
+En primer lugar, la versión 2.3 y versiones anteriores son vulnerables a nuestros ataques sin efectos secundarios inesperados.
+Sin embargo, descubrimos que las versiones 2.4 y 2.5 instalan una clave de cifrado (TK) de sólo ceros cuando reciben un mensaje retransmitido.
+Esta vulnerabilidad parece ser causada por una observación en el estándar 802.11 que indirectamente sugiere borrar la TK de la memoria una vez
+que ha sido instalada. La versión 2.6 corrigió este error instalando únicamente la TK cuando recibía el mensaje 3 por primera vez.
+Sin embargo, cuando se parcheó este error, solo se consideró un escenario benigno donde el mensaje 3 se retransmitiá porque el mensaje 4 se
+habia perdido debido al ruido de fondo. No consideraron que un atacante activo puede abusar de este error para forzar la instalación de una 
+clave de sólo ceros. Como resultado, el parche no se trató como crítico de seguridad y no se transfirió a versiones anteriores.
+Independientemente de este error, todas las versiones de wpa_supplicant vuelven a instalar la clave grupal cuando reciben un mensaje
+retransmitido, y también son vulnerables al ataque de clave grupal de la Sección 4.
+
+Ya que Android usa internamente una versión ligeramente modificada de wpa_supplicant, también se ve afectado por estos ataques.
+En particular, inspeccionamos el repositorio oficial de código fuente de wpa_supplicant de Android, y descubrimos que todas las versiones de
+Android 6.0 contienen la vulnerabilidad de clave de cifrado de sólo ceros. Android Wear 2.0 también es vulnerable a este ataque.
+Aunque los fabricantes terceros pueden usar una versión diferente de wpa_supplicant en sus compilaciones de Android,
+esta es una fuerte indicación de que la mayoría de las versiones de Android 6.0 son vulnerables.
+En otras palabras, el 31.2% de los teléfonos inteligentes con Android son vulnerables a la vulnerabilidad de la clave de cifrado de sólo ceros.
+Finalmente, también confirmamos empíricamente que Chromium es vulnerable a la vulnerabilidad de la clave de cifrado de sólo ceros.
+
+### 6.4 Limitaciones de las pruebas de seguridad
+Curiosamente, nuestros ataques no violan las propiedades dre seguridad probadas en el análisis formal del 4-way handshake ni de la clave grupal.
+
+Primero, He et al. demostró que el 4-way handshake proporciona confidencialidad de clave y autenticación de sesión.
+La confidencialidad de clave establece que solo el autenticador y el solicitante poseerán la PTK.
+Ya que no recuperamos la PTK, esto todavía se cumple de forma adecuada.
+La autenticación de sesión se comprobó utilizando la noción estándar de conversaciones coincidentes.
+Intuitivamente, esto indica que un protocolo es seguro si la única forma en que un atacante puede lograr que una parte complete el protocolo 
+es transmitiendo fielmente los mensajes. Nuestros ataques, incluida la posición MitM basada en el canal que empleamos,
+no violan esta propiedad: solo podemos hacer que los puntos finales completen el handshake enviando mensajes (retransmitidos).
+
+En segundo lugar, He et al. comprobó el orden de las claves y el secreto clave para el handshake de clave grupal.
+El orden de las claves garantiza que los suplicantes no instalen una GTK antigua.
+Esto sigue siendo cierto en nuestro ataque, ya que reinstalamos la clave grupal actual.
+Además, no conocemos la clave grupal, por lo tanto, el secreto clave tampoco es violado por nuestros ataques.
+
+## 7. TRABAJO RELACIONADO
+En esta sección exploramos la historia de los ataques de reinstalación de clave y damos un resumen de otros trabajos de seguridad de protocolo
+y Wi-Fi.
+
+### 7.1 Ataques de reinstalación de clave
+No tenemos conocimiento de trabajo previo sobre los ataques de reinstalación de claves.
+Esta falta de trabajo previo es probablemente una de las razones por las cuales los handshake de Wi-Fi criptográficos que investigamos aún
+eran vulnerables a estos ataques. Por ejemplo, solo ahora descubrimos que el 4-way handshake de 14 años es vulnerable a los ataques de
+reinstalación de clave.
+Además, este defecto no solo está presente en las implementaciones, sino también en la especificación del protocolo (estándar).
+
+
+Un escenario algo relacionado que también conduce a la reutilización del nonce son las fallas de energía.
+Aquí, después de un corte de energía, la clave se restaura desde la memoria no violada al arrancar, pero el nonce será restaurado a su valor inicial.
+Zenner propone soluciones sugeridas para este problema.
+Sin embargo, a diferencia de los ataques de reinstalación clave, no se pueden desencadenar fallos de energia de forma remota a través de una red.
+En cambio, esto requiere acceso físico al dispositivo que está siendo atacado.
+Además, las fallas de energía no afectan la seguridad de los protocolos que estudiamos, ya que estos handshake se usan precisamente para evitar mantener el estado entre conexiones antiguas y conexiones nuevas.
+
+En [16], Bock et al. descubrió que algunos servidores TLS estaban usando nonces estáticos.
+Esto fue causado por una implementación defectuosa del protocolo de capa de grabación TLS.
+Es decir, no fue causado por una reinstalación de una clave que ya estaba en uso.
+Además, algunos servidores utilizan nonces generados aleatoriamente, lo que significa que en la práctica es probable que se produzca la reutilización debido a la paradoja del cumpleaños.
+Por el contrario, los ataques de reinstalación de clave permiten a un atacante forzar la reutilización de nonces según demanda repitiendo los mensajes del handshake, y son causados por fallas en la especificación (o implementación) del protocolo del handshake.
+
+McGrew hizo una encuesta de mejores prácticas para generar IVs y nonces, y resume cómo son generadaos y utilizados en varios protocolos [51].
+Sin embargo, en la discusión de los riesgos de seguridad, no se mencionan (variaciones de) los ataques de reinstalación de clave.
+
+Otro trabajo algo relacionado es el de Beurdouche et al. [14] y el de de Ruiter y Poll [27].
+Descubrieron que varias implementaciones de TLS contenían mecánismos de estado defectuosos.
+En particular, ciertas implementaciones permitian erróneamente que los mensajes del handshake se repitieran.
+Sin embargo, no pudieron crear ejemplos de ataques que explotaran la capacidad de repetir mensajes.
+Supongamos que un atacante puede repetir ciertos mensajes para engañar a un endpoint para reinstalar las claves de sesión TLS,
+es decir, un ataque de reinstalación de clave podría ser posible.
+Consideramos interesante el trabajo futuro para determinar si esto lleva a ataques prácticos.
+
+La reutilización de IVs también es un problema en el roto protocolo WEP [17, 18].
+En particular, Borisov et al. descubrió que ciertas tarjetas de red inalámbricas inicializaban el WEP IV a cero cada vez que se (re) inicializaban.
+En consecuencia, es probable que se reutilicen keystreams correspondientes a IV pequeños [18].
+Sin embargo, a diferencia de los ataques de reinstalación de clave, estos reinicios IV no se pueden desencadenar de forma remota.
+
+### 7.2 Wi-Fi y la Seguridad del Protocolo de Red
+En uno de los primeros análisis formales del 4-way handshake, Él y Mitchell descubrieron una vulnerabilidad de denegación de servicio [38, 55].
+Esto llevo a la estandarización de un 4-way handshake ligeramente mejorado [1].
+En 2005, Él et al. presentó una prueba formal de corrección tanto del 4-way handshake como del handshake de clave grupal [39].
+Sin embargo, no modelaron explícitamente la selección de cifrado y la protección de degradación.
+Esto le permitió a Vanhoef y Piessens llevar a cabo un ataque de degradación contra el 4-way handshake [72].
+En su ataque, se engaña al AP para que use RC4 para encriptar la clave grupal cuando se transporta en el mensaje 3.
+
+Este ataque solo es posible si la red soporta WPA-TKIP, que ya se sabía que era un cifrado débil [66, 69].
+Además, los modelos empleados en [39] no definen cuándo instalar la clave de sesión negociada o la clave de grupo transportada.
+Sin embargo, mostramos que este momento es, de hecho, esencial, ya que de lo contrario podrían ser posibles los ataques de reinstalación.
+
+El FT handshake se basa en el 4-way handshake [5], pero no hay un análisis de seguridad formal del mismo.
+En cambio, los trabajos existentes se centran en el rendimiento del apretón de manos, por ejemplo [11, 46].
+Varios trabajos estudian mecanismos de autenticación que negocian claves maestras (PMK) [19, 21, 59, 75].
+Algunos de estos mecanismos se basan en establecer primero una sesión TLS segura [9].
+Como resultado, los ataques recientes a TLS también afectan estos mecanismos, por ejemplo [10, 14, 15, 27, 62].
+En este documento, no estudiamos los mecanismos que negocian las claves maestras, sino que nos centramos en los handshake que derivan nuevas claves de sesión a partir de una clave maestra negociada o precompartida.
+
+Con respecto a los protocolos de confidencialidad de datos, Beck y Tews encontraron el primer ataque práctico a WPA-TKIP [66].
+Mostraron cómo descifrar un pequeño paquete TKIP, recuperaron la clave MIC y, posteriormente, falsificaron los paquetes.
+Su ataque fue mejorado aún más en varios trabajos [36, 67, 69, 70].
+Los investigadores también atacaron la construcción débil de la clave por paquete de TKIP explotando prejuicios en RC4 [6, 57, 71].
+Hoy en día, TKIP está en desuso por la Wi-Fi Alliance debido a sus problemas de seguridad [74].
+
+Aunque CCMP recibió algunas críticas [60], se ha demostrado que proporciona garantías de seguridad similares a modos tales como OCB [42].
+En [31], Fouque et al. discute ataques teóricos de falsificación de mensajes cuando los nonces se repiten en CCMP.
+
+Se sabe que el cifrado GCM es débil cuando se usan etiquetas de autenticación cortas [29] y cuando se vuelven a usar nonces [43].
+Böck et al. Investigua empíricamente la reutilización de nonce cuando se usa GCM en TLS [16], y descubrió varios servidores que reutilizan nonces.
+Nuestro ataque a GCMP en 802.11 es único porque podemos controlar cuándo un endpoint reutiliza un nonce, y ya que GCMP usa la misma clave (de autenticación) en ambas direcciones de la comunicación.
+Varios criptógrafos se refirieron recientemente a GCM como frágil [35, 56].
+
+Finalmente, otros trabajos resaltaron problemas de seguridad en las implementaciones Wi-Fi o en las tecnologías circundantes.
+Por ejemplo, se descubrieron fallas de diseño en Wi-Fi Protected Setup (WPS) [73], se encontraron vulnerabilidades en los controladores [13, 20], se encontró que los routers usaban claves precompartidas predecibles [45], y así sucesivamente.
