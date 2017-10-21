@@ -453,7 +453,7 @@ Más precisamente, primero establecemos una posición de hombre en el medio (Man
 Usamos está posición MitM para activar retransmisiones del mensaje 3 al prevenir que el mensaje 4 llegue al autenticador.
 Como resultado, este retransmitirá el mensaje 3, lo cual causa que el solicitante reinstale una clave PTK ya en uso.
 A su vez, esto restaura el nonce usado por el protocolo de confidencialidad de datos. Dependiendo del protocolo siendo usado,
-esto le permite a un atacante repetir, decifrar, y/o falsificar paquetes.
+esto le permite a un atacante repetir, descifrar, y/o falsificar paquetes.
 En la Seccion 6.1 exploraremos en detalle cuales son los impactos prácticos de la reutilizacion del nonce para cada protocolo de confidencialidad.
 
 En la práctica, surgen algunas complicaciones cuando se ejecuta el ataque.
@@ -556,7 +556,7 @@ Una vez más el atacante usa una posición MitM basado en canal. Entonces deja q
 espera hasta que un segundo 4-way handshake se inicie para renovar la PTK. A pesar de que el atacante sólo ve tramas cifradas, los mensajes en
 un 4-way handshake pueden ser detectados por su largo unico y su destino. En este punto, el ataque es analogo al caso de Android.
 Es decir, en la etapa 2 del ataque, el atacante no redirige el primer mensaje 3 inmediatamente. En cambio, espera hasta que el AP retransmita
-el mensaje 3, y entonces redirige ambos mensajes uno tras otro a la victima (ver Figura 6 etapa 2). El NIC inalambrico decifrará ambos mensajes
+el mensaje 3, y entonces redirige ambos mensajes uno tras otro a la victima (ver Figura 6 etapa 2). El NIC inalambrico descifrará ambos mensajes
 usando la PTK actual, y los redirigira a la cola de recpción de paquetes de la CPU principal. En la tercera etapa del ataque, la CPU principal
 de la victima procesa el primer mensaje 3, lo responde, y le ordena al NIC que instale la nueva PTK. En la cuarta etapa, la CPI principal toma
 el segundo mensaje 3 de la lista de recepción. Y ya que una PTK está instalada, OpenBSD, OS X y macOS (aquí llamados CPU principal) requeriran
@@ -752,3 +752,44 @@ se traslada al AP (wormholed) usando un FT handshake.
 
 Probamos esto contra clientes que soportan 802.11r. Esto confirmó que wpa_supplicant, iOS y Windows aceptan la petición de transicion, y se
 trasladan a otro AP usando un FT handshake.
+
+## 6. EVALUACIÓN Y DISCUSIÓN
+En esta sección evaluamos el impacto de la reutilización del nonce para los protocolos de confidencialidad de datos 802.11, presentamos ejemplos
+de escenarios de ataque, discutimos la implementación de vulnerabilidades especificas, explicamos por qué las pruebas de seguridad pasaron por
+alto nuestros ataques, y presentamos contramedidas
+
+### 6.1 Impacto de la Reutilización del Nonce en 802.11
+El impacto preciso de la reutilización del nonce causado por nuestros ataques depende del protocolo de confidencialidad de datos que se utilice.
+Recuerde que puede ser TKIP, CCMP o GCMP. Los tres protocolos usan un cifrado de flujo para cifrar las tramas.
+Por lo tanto, la reutilización de un nonce siempre implica la reutilización del flujo de claves.
+Esto se puede usar para descifrar paquetes. Observamos que en nuestro ataque el contador de repetición de la víctima también se restablece.
+Por lo tanto, los tres protocolos también son vulnerables a los ataques de repetición.
+
+Cuando se usa TKIP, también podemos recuperar la clave MIC de la siguiente manera.
+Primero, abusamos de la reutilización del nonce para descifrar un paquete TKIP completo, incluido su campo MIC.
+Luego atacamos el débil algoritmo de Michael: con la trama en texto plano y su valor MIC descifrado, podemos recuperar la clave MIC.
+Debido a que TKIP utiliza una clave MIC diferente para cada dirección de la comunicación (recordar la Sección 2.4),
+esto nos permite falsificar tramas en una dirección específica. El origen de esta dirección es el dispositivo al que se dirige el ataque de
+reinstalación de clave. La Tabla 3 resume esto debajo de las filas que mencionan TKIP.
+
+Cuando se usa CCMP, los ataques prácticos están restringidos a la repetición y el descifrado de paquetes.
+Aunque hay algunos trabajos que analizan los ataques de falsificación de mensajes cuando se repiten nonces,
+los ataques son teóricos y no se pueden usar para falsificar mensajes arbitrarios.
+
+Cuando se usa GCMP, el impacto es catastrófico. Primero, es posible repetir y descifrar paquetes.
+Además, se puede recuperar la clave de autenticación, que en GCMP es usada para proteger ambas direcciones de la comunicación
+(recordar la Sección 2.4). Por lo tanto, a diferencia de TKIP, un atacante puede falsificar paquetes en ambas direcciones.
+
+Ya que se espera que GCMP se adopte a un ritmo elevado en los próximos años bajo el nombre de WiGig, esta es una situación preocupante.
+
+En general, un atacante siempre puede repetir, descifrar o falsificar paquetes en una dirección específica de la comunicación.
+La dirección concreta depende del handshake que se está atacando. Por ejemplo, ya que con el 4-way handshake atacamos al cliente,
+puede usarse para: (1) repetir tramas de uni-difusión y de difusión/multidifusión hacia el cliente; (2) descifrar tramas enviadas por el
+cliente al AP; y (3) falsificar tramas del cliente hacia el AP.
+Sin embargo, contra el FT handshake atacamos al AP en lugar del cliente, lo que significa que podemos repetir, descifrar y/o falsificar
+paquetes en sentido contrario. La Tabla 3 resume esto en el apéndice, teniendo en cuenta el handshake atacado.
+
+Por último, en varios casos podemos falsificar mensajes del cliente hacia el AP (ver Tabla 3).
+Curiosamente, el AP generalmente no es el destino final de una trama, en su lugar, reenviará la trama a su destino real.
+Esto significa que podemos falsificar paquetes hacia cualquier dispositivo conectado a la red. Dependiendo del AP, incluso es posible enviar
+un trama que se refleje de nuevo al cliente.
