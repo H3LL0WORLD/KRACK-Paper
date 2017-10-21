@@ -923,3 +923,103 @@ Varios criptógrafos se refirieron recientemente a GCM como frágil [35, 56].
 
 Finalmente, otros trabajos resaltaron problemas de seguridad en las implementaciones Wi-Fi o en las tecnologías circundantes.
 Por ejemplo, se descubrieron fallas de diseño en Wi-Fi Protected Setup (WPS) [73], se encontraron vulnerabilidades en los controladores [13, 20], se encontró que los routers usaban claves precompartidas predecibles [45], y así sucesivamente.
+
+## CONCLUSIÓN
+A pesar de las pruebas de seguridad del 4-way handshake y el handshake de clave grupal, mostramos que ambos son vulnerables a ataques de reinstalación de clave.
+Estos ataques no violan las propiedades de seguridad de las pruebas formales, pero resaltan limitaciónes en los modelos empleados por ellos.
+En particular, los modelos no especifican cuando una clave debe ser instalada para ser usada por el protocolo de confidencialidad de datos.
+Adicionalmente, mostramos que los handshake PeerKey y Fast BSS Transition son vulnerables a ataques de reinstalación de clave.
+
+Todos los clientes Wi-Fi que probamos resultaron vulnerables a nuestro ataque contra el 4-way handshake. Esto le permite a un atacante repetir
+tramas de difusión y multi-difusión. Cuando el 4-way o Fast BSS handshake es atacado, el impacto preciso depende del protocolo de confidencialidad siendo usado. Aunque en todos los casos, es posible descifrar tramas y por ende secuestrar conexiones TCP.
+Esto permite la inyección de datos en conexiones HTTP no cifradas.
+Además nuestro ataque contra Android 6.0 activo la instalación de una clave de sólo ceros, ignorando completamente cualquier garantía de seguridad.
+
+Aún más preocupante, nuestro ataque de reinstalación de clave incluso ocurre de manera espontanea si ciertos mensajes del handshake se pierden
+debido al ruido de fondo. Esto significa que bajo ciertas circunstancias, las implementaciones están reutilizando nonces incluso sin que un
+atacante esté presente.
+
+Una interesante dirección de investigación futura es determinar si otras implementaciones de protocolos son también vulnerables a ataques
+de reinstalación de clave. Los protocolos que parecen particularmente vulnerables son aquellos que deben tener en cuenta que un mensaje podría perderse.
+Después de todo estos protocolos están explicitamente diseñados para procesar tramas retransmitidas, y posiblemente están reinstalando claves mientras lo hacen.
+
+## RECONOCIMIENTOS
+Esta investigación está fundada parcialmente por el Fondo de Investigación KU Leuven y por el proyecto imec High Impact Initiative Distributed Trust.
+
+## REFERENCIAS
+1. IEEE Std 802.11. 2016. Wireless LAN Medium Access Control (MAC) and Physical Layer (PHY) Spec.
+1. IEEE Std 802.11ac. 2013. Amendment 4: Enhancements for Very High Throughput for Operation in Bands below 6 GHz.
+1. IEEE Std 802.11ad. 2012. Amendment 3: Enhancements for Very High Throughput in the 60 GHz Band.
+1. IEEE Std 802.11i. 2004. Amendment 6: Medium Access Control (MAC) Security Enhancements.
+1. IEEE Std 802.11r. 2008. Amendment 2: Fast Basic Service Set (BSS) Transition.
+1. Nadhem J AlFardan, Daniel J Bernstein, Kenneth G Paterson, Bertram Poettering, and Jacob CN Schuldt. 2013. On the Security of RC4 in TLS.. In USENIX Security.
+1. Wi-Fi Alliance. 2010. Hotspot 2.0 (Release 2) Technical Specification v1.1.0.
+1. Apple. 2017. Wi-Fi network roaming with 802.11k, 802.11r, and 802.11v on iOS. (2017). Retrieved May 19, 2017 from https://support.apple.com/en-us/HT202628
+1. N. Asokan, Valtteri Niemi, and Kaisa Nyberg. 2002. Man-in-the-Middle in Tunnelled Authentication Protocols. Cryptology ePrint Archive, Report 2002/163. (2002).
+1. Nimrod Aviram, Sebastian Schinzel, Juraj Somorovsky, Nadia Heninger, Maik Dankel, Jens Steube, Luke Valenta, David Adrian, J Alex Halderman, Viktor Dukhovni, et al. 2016. DROWN: breaking TLS using SSLv2. In USENIX Security.
+1. Sangeetha Bangolae, Carol Bell, and Emily Qi. 2006. Performance study of fast BSS transition using IEEE 802.11 r. In Proceedings of the 2006 international conference on Wireless communications and mobile computing.
+1. Mihir Bellare and Phillip Rogaway. 1993. Entity authentication and key distribution. In Annual International Cryptology Conference.
+1. Gal Beniamini. 2017. Over The Air: Exploiting Broadcom’s Wi-Fi Stack. (2017). Retrieved May 19, 2017 from https://googleprojectzero.blogspot.be/2017/04/overair-exploiting-broadcoms-wi-fi_4.html
+1. Benjamin Beurdouche, Karthikeyan Bhargavan, Antoine Delignat-Lavaud, Cédric Fournet, Markulf Kohlweiss, Alfredo Pironti, Pierre-Yves Strub, and Jean Karim Zinzindohoue. 2015. A messy state of the union: Taming the composite state machines of TLS. In IEEE S&P.
+1. Karthikeyan Bhargavan and Gaëtan Leurent. 2016. On the practical (in-) security of 64-bit block ciphers: Collision attacks on HTTP over TLS and OpenVPN. In CCS.
+1. Hanno Böck, Aaron Zauner, Sean Devlin, Juraj Somorovsky, and Philipp Jovanovic. 2016. Nonce-Disrespecting Adversaries: Practical Forgery Attacks on GCM in TLS. In USENIX WOOT.
+1. Nikita Borisov, Ian Goldberg, and David Wagner. 2001. Analysis of 802.11 Security, or Wired Equivalent Privacy Isn’t. In Mac Crypto Workshop.
+1. Nikita Borisov, Ian Goldberg, and David Wagner. 2001. Intercepting mobile communications: the insecurity of 802.11. In MobiCom.
+1. Sebastian Brenza, Andre Pawlowski, and Christina Pöpper. 2015. A practical investigation of identity theft vulnerabilities in eduroam. In WiSec.
+1. Laurent Butti and Julien Tinnes. 2008. Discovering and exploiting 802.11 wireless driver vulnerabilities. Journal in Computer Virology 4, 1 (2008), 25–37.
+1. Aldo Cassola, William Robertson, Engin Kirda, and Guevara Noubir. 2013. A Practical, Targeted, and Stealthy Attack Against WPA Enterprise Authentication. In NDSS Symp.
+1. CERT/CC. 2017. Vulnerability Note VU#228519: WPA2 protocol vulnerabilities. (2017). http://www.kb.cert.org/vuls/id/228519
+1. Alessandro Cimatti, Edmund Clarke, Enrico Giunchiglia, Fausto Giunchiglia, Marco Pistore, Marco Roveri, Roberto Sebastiani, and Armando Tacchella. 2002. Nusmv 2: An opensource tool for symbolic model checking. In International Conference on Computer Aided Verification. Springer.
+1. Cisco. 2008. Wireless-G Exterior Access Point with Power Over Ethernet Business Series: User Guide. (2008). Retrieved May 17, 2017 from http://www.cisco.com/c/dam/en/us/td/docs/wireless/access_point/csbap/ wap200e/administration/guide/WAP200E_V10_UG_C_web.pdf
+1. corbixgwelt. 2011. Timejacking & Bitcoin: The Global Time Agreement Puzzle. (2011). Retrieved May 13, 2017 from http://culubas.blogspot.be/2011/05/ timejacking-bitcoin_802.html
+1. dd wrt. 2017. QCA Wireless Settings: Key Renewal Interval. (2017). Retrieved May 17, 2017 from https://www.dd-wrt.com/wiki/index.php/QCA_wireless_settings# Key_Renewal_Interval
+1. Joeri De Ruiter and Erik Poll. 2015. Protocol state fuzzing of TLS implementations. In USENIX Security.
+1. Morris Dworkin. 2007. Recommendation for block cipher modes of operation: Galois/Counter Mode (GCM) for confidentiality and authentication. In NIST Special Publication 800-38D.
+1. Niels Ferguson. 2005. Authentication weaknesses in GCM. Comments submitted to NIST Modes of Operation Process (2005). Retrieved May 16, 2017 from http://csrc.nist.gov/groups/ST/toolkit/BCM/documents/comments/CWCGCM/Ferguson2.pdf
+1. Scott Fluhrer, Itsik Mantin, and Adi Shamir. 2001. Weaknesses in the key scheduling algorithm of RC4. In SAC.
+1. Pierre-Alain Fouque, Gwenaëlle Martinet, Frédéric Valette, and Sébastien Zimmer. 2008. On the Security of the CCM Encryption Mode and of a Slight Variant. In Applied Cryptography and Network Security.
+1. Google. 2017. Codenames, Tags, and Build Numbers. (2017). Retrieved August 29, 2017 from https://source.android.com/source/build-numbers
+1. Google. 2017. Dashboards: Platform Versions. (2 May 2017). Retrieved May 15, 2017 from https://developer.android.com/about/dashboards/index.html
+1. Google Git. 2017. wpa supplicant 8. (2017). Retrieved May 15, 2017 from https://android.googlesource.com/platform/external/wpa_supplicant_8/+refs
+1. Shay Gueron and Vlad Krasnov. 2014. The fragility of aes-gcm authentication algorithm. In 11th International Conference on Information Technology: New Generations (ITNG).
+1. Finn M. Halvorsen, Olav Haugen, Martin Eian, and Stig F. Mjølsnes. 2009. An Improved Attack on TKIP. In NordSec.
+1. B. Harris and R. Hunt. 1999. Review: TCP/IP security threats and attack methods. Computer Communications 22, 10 (1999), 885–897.
+1. Changhua He and John C Mitchell. 2004. Analysis of the 802.1 i 4-Way Handshake. In WiSe. ACM.
+1. Changhua He, Mukund Sundararajan, Anupam Datta, Ante Derek, and John C Mitchell. 2005. A modular correctness proof of IEEE 802.11i and TLS. In CCS.
+1. Lieven Hollevoet. 2014. xAP and xPL Getting started. (2014). Retrieved August 29, 2017 from https://github.com/hollie/misterhouse/wiki/xAP-and-xPL---Gettingstarted
+1. Yih-Chun Hu, Adrian Perrig, and David B Johnson. 2006. Wormhole attacks in wireless networks. IEEE journal on selected areas in communications (2006).
+1. Jakob Jonsson. 2002. On the security of CTR+ CBC-MAC. In SAC.
+1. Antoine Joux. 2006. Authentication failures in NIST version of GCM. Retrieved 8 May 2017 from http:// csrc.nist.gov/groups/ST/ toolkit/BCM/documents/ Joux_ comments.pdf (2006).
+1. J. Klein. 2013. Becoming a time lord - implications of attacking time sources. In Shmoocon Firetalks.
+1. Eduardo Novella Lorente, Carlo Meijer, and Roel Verdult. 2015. Scrutinizing WPA2 password generating algorithms in wireless routers. In USENIX WOOT.
+1. Przemyslaw Machan and Jozef Wozniak. 2013. On the fast BSS transition algorithms in the IEEE 802.11 r local area wireless networks. Telecommunication Systems (2013).
+1. Aanchal Malhotra, Isaac E Cohen, Erik Brakke, and Sharon Goldberg. 2016. Attacking the Network Time Protocol. (2016).
+1. Aanchal Malhotra and Sharon Goldberg. 2016. Attacking NTP’s Authenticated Broadcast Mode. ACM SIGCOMM Computer Communication Review (2016).
+1. Jouni Malinen. 2015. 802.11e support? (2015). Retrieved May 17, 2017 from http://lists.shmoo.com/pipermail/hostap/2015-June/032952.html
+1. Jouni Malinen. 2015. Fix TK configuration to the driver in EAPOL-Key 3/4 retry case. Hostap commit ad00d64e7d88. (1 Oct. 2015).
+1. David McGrew. 2013. IETF Internet Draft: Generation of Deterministic Initialization Vectors (IVs) and Nonces. (2013). Retrieved August 29, 2017 from https://tools.ietf.org/html/draft-mcgrew-iv-gen-03
+1. Microsoft. 2017. Fast Roaming with 802.11k, 802.11v, and 802.11r. (2017). Retrieved May 19, 2017 from https://docs.microsoft.com/en-us/windows-hardware/drivers/ network/fast-roaming-with-802-11k--802-11v--and-802-11r
+1. D. Mills, J. Martin, J. Burbank, and W. Kasch. 2010. Network Time Protocol Version 4: Protocol and Algorithms Specification.
+1. David L Mills. 2011. Computer network time synchronization (2 ed.). CRC Press.
+1. John Mitchell and Changhua He. 2005. Security Analysis and Improvements for IEEE 802.11i. In NDSS.
+1. Kenneth G. Paterson. 2015. Countering Cryptographic Subversion. (2015). Retrieved May 16, 2017 from https://hyperelliptic.org/PSC/slides/paterson-PSC.pdf
+1. Kenneth G. Paterson, Bertram Poettering, and Jacob C. N. Schuldt. 2014. Plaintext Recovery Attacks Against WPA/TKIP. In FSE.
+1. Grand View Research. 2017. Wireless Gigabit (WiGig) Market Size To Reach $7.42 Billion By 2024. (2017). Retrieved May 10, 2017 from http://www. grandviewresearch.com/press-release/global-wireless-gigabit-wigig-market
+1. Pieter Robyns, Bram Bonné, Peter Quax, and Wim Lamotte. 2014. Short paper: exploiting WPA2-enterprise vendor implementation weaknesses through challenge response oracles. In WiSec.
+1. P. Rogaway and D. Wagner. 2003. A Critique of CCM. Cryptology ePrint Archive, Report 2003/070. (2003).
+1. J. Selvi. 2015. Breaking SSL using time synchronisation attacks. In DEF CON Hacking Conference.
+1. Juraj Somorovsky. 2016. Systematic Fuzzing and Testing of TLS Libraries. In CCS.
+1. Robert Stacey, Adrian Stephens, Jesse Walker, Herbert Liondas, and Emily Qi. 2010. Rekeying Protocol Fix. (2010). Retrieved August 19, 2017 from https:// mentor.ieee.org/802.11/dcn/10/11-10-0313-01-000m-rekeying-protocol-fix.ppt
+1. Robert Stacey, Adrian Stephens, Jesse Walker, Herbert Liondas, and Emily Qi. 2010. Rekeying Protocol Fix Text. (2010). Retrieved August 19, 2017 from https://mentor. ieee.org/802.11/dcn/10/11-10-0314-00-000m-rekeying-protocol-fix-text.doc
+1. Adam Stubblefield, John Ioannidis, Aviel D Rubin, et al. 2002. Using the Fluhrer, Mantin, and Shamir Attack to Break WEP. In NDSS.
+1. Erik Tews and Martin Beck. 2009. Practical attacks against WEP and WPA. In WiSec.
+1. Yosuke Todo, Yuki Ozawa, Toshihiro Ohigashi, and Masakatu Morii. 2012. Falsification Attacks against WPA-TKIP in a Realistic Environment. IEICE Transactions (2012).
+1. Mathy Vanhoef. 2017. Chromium Bug Tracker: WPA1/2 all-zero session key & key reinstallation attacks. (2017). Retrieved August 29, 2017 from https:// bugs.chromium.org/p/chromium/issues/detail?id=743276
+1. Mathy Vanhoef and Frank Piessens. 2013. Practical verification of WPA-TKIP vulnerabilities. In ASIA CCS. ACM, 427–436.
+1. Mathy Vanhoef and Frank Piessens. 2014. Advanced Wi-Fi attacks using commodity hardware. In ACSAC.
+1. Mathy Vanhoef and Frank Piessens. 2015. All your biases belong to us: Breaking RC4 in WPA-TKIP and TLS. In USENIX Security.
+1. Mathy Vanhoef and Frank Piessens. 2016. Predicting, Decrypting, and Abusing WPA2/802.11 Group Keys. In USENIX Security.
+1. Stefan Viehböck. 2011. Brute forcing Wi-Fi protected setup. (2011). Retrieved May 9, 2017 from http://packetstorm.foofus.com/papers/wireless/viehboeck_wps.pdf
+1. Wi-Fi Alliance. 2015. Technical Note: Removal of TKIP from Wi-Fi Devices.
+1. Joshua Wright. 2003. Weaknesses in LEAP challenge/response. In DEF CON Hacking Conference.
+1. Erik Zenner. 2009. Nonce Generators and the Nonce Reset Problem. In International Conference on Information Security.
