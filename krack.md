@@ -1,4 +1,4 @@
-# Ataques de reinstalación de claves: Forzar la reutilización del Nonce en WPA2
+# Ataques de reinstalación de clave: Forzar la reutilización del Nonce en WPA2
 
 - Mathy Vanhoef
 - imec-DistriNet, KU Leuven
@@ -212,7 +212,7 @@ la KEK. Finalmente, la autenticidad de la trama es protegida usando la KCK con
 una (Verificación de Integridad de Mensaje | Message Integriti Check) (MIC).
 
 La figura 2 ilustra los mensajes que son intercambiados durante el 4-way
-handshake. En est, usamos la siguiente notación:
+handshake. En este, usamos la siguiente notación:
 ```
 MsgN(r, Nonce; GTK)
 ```
